@@ -23,7 +23,17 @@ xcodebuild -project GawdSpeed.xcodeproj -scheme GawdSpeed -destination 'platform
 scripts/check-licenses.sh              # must pass before every commit
 ```
 
-`GawdSpeed.xcodeproj`, `build/` and `TestOutput/` are generated and git-ignored.
+`GawdSpeed.xcodeproj`, `build/`, `dist/` and `TestOutput/` are generated and git-ignored.
+
+```bash
+scripts/build-ffmpeg.sh               # bundled ffmpeg (about a minute); the app build copies it in
+scripts/release.sh 0.2.0 --dry-run    # a full release build into dist/ without needing a tag
+git tag v0.2.0 && git push origin v0.2.0   # the real release: GitHub Actions builds and publishes it
+```
+
+Releases are public, so tag only when Earl says so. Signing needs his Developer ID
+secrets in GitHub (listed at the top of `.github/workflows/release.yml`); without them a
+release is marked UNSIGNED.
 
 ## Layout and conventions
 
