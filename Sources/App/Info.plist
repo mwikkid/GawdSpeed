@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!-- Merged with the generated Info.plist. GSSourceCommit is the git commit a
+     release was built from (scripts/release.sh sets GS_SOURCE_COMMIT); the
+     About window links to that commit's source on GitHub. -->
+<plist version="1.0">
+<dict>
+	<key>GSSourceCommit</key>
+	<string>$(GS_SOURCE_COMMIT)</string>
+</dict>
+</plist>

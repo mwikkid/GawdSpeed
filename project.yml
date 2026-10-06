@@ -66,6 +66,7 @@ targets:
     platform: macOS
     sources:
       - path: Sources
+        excludes: ["App/Info.plist"]
       # License texts the About window shows (spec §7.2: they ship in the app).
       - path: LICENSES
         type: folder
@@ -105,6 +106,8 @@ targets:
     settings:
       base:
         PRODUCT_NAME: GawdSpeed
+        INFOPLIST_FILE: Sources/App/Info.plist
+        GS_SOURCE_COMMIT: ""
         PRODUCT_BUNDLE_IDENTIFIER: audio.iii.GawdSpeed
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         GENERATE_INFOPLIST_FILE: YES

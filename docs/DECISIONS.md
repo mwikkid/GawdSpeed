@@ -5,6 +5,14 @@ the date, who decided, and why.
 
 ## 2026-10-06 (Phase 4)
 
+- **Source for testers is a link, not a bundle** (Earl). Each release build stamps its git
+  commit into the app (`GSSourceCommit`). About ▸ "Source code for this build" links to that
+  commit on GitHub, and `scripts/release.sh` refuses to build a commit that isn't pushed.
+  ffmpeg and LAME sources are named with pinned URLs and checksums in `build-ffmpeg.sh` and
+  `THIRD_PARTY_NOTICES.md` (GPLv3 §6(d): source on a server, with clear directions). Public
+  GitHub Releases still attach every source archive. Clicking the iii.audio mark opens the
+  About window (the credits).
+
 - **A two-page PDF guide** (Earl asked): an annotated screenshot with every control explained,
   the "first loop in 30 seconds", Settings and the keyboard shortcuts. Its source is
   `docs/guide/guide.html` and `scripts/make-guide.sh` prints it with headless Chrome; the PDF is

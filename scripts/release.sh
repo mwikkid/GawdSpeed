@@ -46,6 +46,12 @@ fi
 
 scripts/check-licenses.sh
 
+# The app links to this commit's source on GitHub, so it must be pushed.
+COMMIT=$(git rev-parse HEAD)
+git fetch -q origin
+git merge-base --is-ancestor "$COMMIT" origin/main \
+    || { echo "Refusing to build: push $COMMIT first (the app links to its source on GitHub)." >&2; exit 1; }
+
 # Check the notarization login before a long build, not after it.
 if [[ -n "${DEVELOPER_ID_APPLICATION:-}" && -n "${NOTARY_PROFILE:-}" ]]; then
     xcrun notarytool history --keychain-profile "$NOTARY_PROFILE" > /dev/null 2>&1 || {
@@ -66,7 +72,7 @@ mkdir -p "$SRC/build" && [[ -d build/ffmpeg-src ]] && cp -R build/ffmpeg-src "$S
 (cd "$SRC" && scripts/build-ffmpeg.sh && xcodegen generate)
 xcodebuild -project "$SRC/GawdSpeed.xcodeproj" -scheme GawdSpeed -configuration Release \
     -destination 'generic/platform=macOS' -derivedDataPath build/release \
-    MARKETING_VERSION="$VERSION" build | grep -E "error:|\*\* " || true
+    MARKETING_VERSION="$VERSION" GS_SOURCE_COMMIT="$COMMIT" build | grep -E "error:|\*\* " || true
 APP="build/release/Build/Products/Release/$APP_NAME.app"
 [[ -d "$APP" ]] || { echo "Build failed: no $APP" >&2; exit 1; }
 [[ -x "$APP/Contents/Helpers/ffmpeg" ]] || { echo "Build has no bundled ffmpeg" >&2; exit 1; }

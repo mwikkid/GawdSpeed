@@ -230,6 +230,7 @@ struct SpeedControl: View {
 
 struct SecondaryControls: View {
     @Bindable var player: PlayerViewModel
+    @Environment(\.openWindow) private var openWindow
 
     var body: some View {
         HStack(alignment: .center, spacing: 0) {
@@ -298,13 +299,18 @@ struct SecondaryControls: View {
 
             // Maker's mark (DECISIONS 2026-10-06). Not covered by the GPL;
             // see THIRD_PARTY_NOTICES.md.
-            Image("iiiAudioWordmark")
-                .renderingMode(.template)
-                .resizable()
-                .aspectRatio(contentMode: .fit)
-                .frame(height: 13)
-                .foregroundStyle(Theme.secondaryText.opacity(0.7))
-                .accessibilityLabel("iii.audio")
+            // Click for the credits: what GawdSpeed is built on, its license, its source.
+            Button { openWindow(id: "about") } label: {
+                Image("iiiAudioWordmark")
+                    .renderingMode(.template)
+                    .resizable()
+                    .aspectRatio(contentMode: .fit)
+                    .frame(height: 13)
+                    .foregroundStyle(Theme.secondaryText.opacity(0.7))
+            }
+            .buttonStyle(.plain)
+            .tip("About GawdSpeed: credits, license and source code")
+            .accessibilityLabel("About GawdSpeed")
 
             Spacer(minLength: 12)
 

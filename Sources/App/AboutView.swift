@@ -30,6 +30,17 @@ struct AboutView: View {
 
     @State private var shownLicense: String?
 
+    /// The commit this build was made from, stamped in by scripts/release.sh
+    /// (GPL: the link must lead to this build's exact source).
+    private var sourceCommit: String? {
+        let commit = Bundle.main.object(forInfoDictionaryKey: "GSSourceCommit") as? String
+        return (commit?.count ?? 0) >= 7 ? commit : nil
+    }
+
+    private var sourceURL: URL {
+        URL(string: "https://github.com/mwikkid/GawdSpeed" + (sourceCommit.map { "/tree/\($0)" } ?? ""))!
+    }
+
     private var version: String {
         let info = Bundle.main.infoDictionary
         return "\(info?["CFBundleShortVersionString"] as? String ?? "?") (\(info?["CFBundleVersion"] as? String ?? "?"))"
@@ -59,14 +70,14 @@ struct AboutView: View {
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
                 HStack(spacing: 14) {
-                    Link("Source code", destination: URL(string: "https://github.com/mwikkid/GawdSpeed")!)
+                    Link(sourceCommit == nil ? "Source code" : "Source code for this build", destination: sourceURL)
                     Button("GNU GPL v3") { shownLicense = "GPL-3.0-or-later" }.buttonStyle(.link)
                 }
                 .font(.system(size: 12))
             }
 
             Divider()
-            Text("Acknowledgements").font(.system(size: 13, weight: .semibold))
+            Text("Built with").font(.system(size: 13, weight: .semibold))
             ForEach(components) { component in
                 HStack {
                     VStack(alignment: .leading, spacing: 1) {
@@ -79,7 +90,11 @@ struct AboutView: View {
                         .font(.system(size: 11))
                 }
             }
-            Text("The iii.audio name and logo are not covered by the GPL.")
+            Text("Websites: audio is fetched by yt-dlp (Unlicense), which GawdSpeed downloads only when you ask; it isn't included.")
+                .font(.system(size: 11))
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+            Text("The iii.audio name and logo, and the app icon, are not covered by the GPL.")
                 .font(.system(size: 11))
                 .foregroundStyle(.secondary)
         }
