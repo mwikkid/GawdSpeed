@@ -88,3 +88,24 @@ func varispeed(_ samples: [Float], speed: Double, outputFrames: Int) -> [Float] 
         return samples[j] * (1 - f) + samples[j + 1] * f
     }
 }
+
+/// Click meter. A click is a jump in the signal's curvature: the largest
+/// |second difference| inside `window` (frames), divided by the largest in
+/// `reference` (a stretch of the same output with nothing happening). A
+/// steady tone reads about 1; a hard splice reads far above it. Checked
+/// against known splices in InstrumentTests.
+func clickRatio(_ samples: [Float], window: Range<Int>, reference: Range<Int>) -> Double {
+    func peakCurvature(_ range: Range<Int>) -> Double {
+        var peak = 0.0
+        for i in max(range.lowerBound, 1)..<min(range.upperBound, samples.count - 1) {
+            peak = max(peak, abs(Double(samples[i + 1]) - 2 * Double(samples[i]) + Double(samples[i - 1])))
+        }
+        return peak
+    }
+    return peakCurvature(window) / max(peakCurvature(reference), 1e-12)
+}
+
+/// A click shows as a ratio above this. Set between the controls in
+/// ClickMeterTests: a hard splice between two phases of a 440 Hz tone reads
+/// over 100, and a 10 ms crossfade of the same splice reads 1.95.
+let clickThreshold = 3.0

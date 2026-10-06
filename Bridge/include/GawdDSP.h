@@ -7,5 +7,6 @@
 #define GAWD_DSP_H
 
 #include "GSStretcher.h"
+#include "GSEngine.h"
 
 #endif

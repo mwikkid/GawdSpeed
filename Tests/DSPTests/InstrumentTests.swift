@@ -64,3 +64,41 @@ final class InstrumentTests: XCTestCase {
                              "an unstretched tone passed the 50% duration check")
     }
 }
+
+final class ClickMeterTests: XCTestCase {
+    // A quarter cycle past a zero crossing, so the hard cut jumps by nearly 1.
+    private let spliceAt = 48_027
+
+    /// Two 440 Hz tones, half a cycle apart, joined at `spliceAt` either
+    /// with a hard cut or with an equal-power crossfade of `fadeFrames`.
+    private func splice(fadeFrames: Int) -> [Float] {
+        let a = sine(frequency: 440, seconds: 2)
+        let b = sine(frequency: 440, seconds: 2, phase: .pi * 0.9)
+        return (0..<a.count).map { i in
+            if fadeFrames == 0 { return i < spliceAt ? a[i] : b[i] }
+            let x = min(1, max(0, Float(i - spliceAt) / Float(fadeFrames)))
+            return a[i] * cos(x * .pi / 2) + b[i] * sin(x * .pi / 2)
+        }
+    }
+
+    private var window: Range<Int> { (spliceAt - 960)..<(spliceAt + 960) }
+    private var reference: Range<Int> { 4_800..<24_000 }
+
+    func testHardSpliceReadsAsClick() {
+        let ratio = clickRatio(splice(fadeFrames: 0), window: window, reference: reference)
+        XCTAssertGreaterThan(ratio, 100, "hard splice read \(ratio)")
+    }
+
+    /// Measured 1.95: the two tones are nearly opposite in phase, so the
+    /// crossfade dips through near-silence. That is the worst case for a
+    /// clean fade, and it must still read below the click threshold.
+    func testCrossfadedSpliceIsClean() {
+        let ratio = clickRatio(splice(fadeFrames: 480), window: window, reference: reference)
+        XCTAssertLessThan(ratio, clickThreshold, "10 ms crossfade read \(ratio)")
+    }
+
+    func testSteadyToneIsClean() {
+        let ratio = clickRatio(sine(frequency: 440, seconds: 2), window: window, reference: reference)
+        XCTAssertLessThan(ratio, 1.1, "steady tone read \(ratio)")
+    }
+}
