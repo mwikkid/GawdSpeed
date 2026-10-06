@@ -17,6 +17,9 @@
 #   NOTARY_PROFILE            a `xcrun notarytool store-credentials` profile name
 # Without them the app is ad-hoc signed and the DMG is marked UNSIGNED.
 #
+# A pre-release suffix (0.1.0-beta1) names the files; the app's version is
+# the number before it (macOS version strings are numbers only).
+#
 # Usage: scripts/release.sh 0.2.0            (HEAD must be tagged v0.2.0)
 #        scripts/release.sh 0.2.0 --dry-run  (any clean HEAD; for testing)
 #        scripts/release.sh 0.2.0 --publish  (tagged; also creates the public
@@ -72,7 +75,7 @@ mkdir -p "$SRC/build" && [[ -d build/ffmpeg-src ]] && cp -R build/ffmpeg-src "$S
 (cd "$SRC" && scripts/build-ffmpeg.sh && xcodegen generate)
 xcodebuild -project "$SRC/GawdSpeed.xcodeproj" -scheme GawdSpeed -configuration Release \
     -destination 'generic/platform=macOS' -derivedDataPath build/release \
-    MARKETING_VERSION="$VERSION" GS_SOURCE_COMMIT="$COMMIT" build | grep -E "error:|\*\* " || true
+    MARKETING_VERSION="${VERSION%%-*}" GS_SOURCE_COMMIT="$COMMIT" build | grep -E "error:|\*\* " || true
 APP="build/release/Build/Products/Release/$APP_NAME.app"
 [[ -d "$APP" ]] || { echo "Build failed: no $APP" >&2; exit 1; }
 [[ -x "$APP/Contents/Helpers/ffmpeg" ]] || { echo "Build has no bundled ffmpeg" >&2; exit 1; }
