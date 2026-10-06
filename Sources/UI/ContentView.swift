@@ -90,6 +90,8 @@ private struct WindowConfigurator: NSViewRepresentable {
             window.contentAspectRatio = Theme.designSize
             window.contentMinSize = Theme.designSize
             window.backgroundColor = NSColor(Theme.background)
+            // No text field gets the keyboard by default (see LinkField).
+            DispatchQueue.main.async { window.makeFirstResponder(nil) }
             // Only the top strip drags the window. A draggable background
             // stole drags meant for the knobs and the waveform.
             window.isMovableByWindowBackground = false

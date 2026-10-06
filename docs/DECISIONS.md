@@ -5,6 +5,16 @@ the date, who decided, and why.
 
 ## 2026-10-06 (Phase 4)
 
+- **A two-page PDF guide** (Earl asked): an annotated screenshot with every control explained,
+  the "first loop in 30 seconds", Settings and the keyboard shortcuts. Its source is
+  `docs/guide/guide.html` and `scripts/make-guide.sh` prints it with headless Chrome; the PDF is
+  committed. It ships in the app (Help ▸ GawdSpeed Guide) and loose in the DMG. Re-run the
+  script after changing the controls; the screenshot is `docs/guide/window.png`, taken of a
+  generated demo song.
+- **App icon** from Earl's artwork: the inner square, fitted to the macOS icon layout.
+- **The link field no longer takes the keyboard at launch.** It had been switching off Space and
+  the other single-key shortcuts until the first click elsewhere.
+
 - **Signing stays on Earl's Mac** (Earl: "I'm just making sure we're being secure"). There
   are no signing secrets on GitHub and no tag-triggered release workflow. `scripts/release.sh`
   signs with the Developer ID certificate in the keychain ("Earlfriend LLC", shared with

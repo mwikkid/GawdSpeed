@@ -65,6 +65,10 @@ struct LinkField: View {
         }
         .onChange(of: focused) { _, isFocused in player.isEditingText = isFocused }
         .onChange(of: player.focusLinkField) { _, _ in focused = true }
+        // macOS hands the window's first text field the keyboard on launch, which
+        // switched off Space and the other single-key shortcuts until a click
+        // elsewhere. The field takes the keyboard only when clicked or on ⌘U.
+        .onAppear { DispatchQueue.main.async { focused = false } }
     }
 }
 

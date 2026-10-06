@@ -74,6 +74,9 @@ targets:
         buildPhase: resources
       - path: THIRD_PARTY_NOTICES.md
         buildPhase: resources
+      # The user guide (scripts/make-guide.sh), opened from Help ▸ GawdSpeed Guide.
+      - path: docs/guide/GawdSpeed-Guide.pdf
+        buildPhase: resources
     dependencies:
       - target: GawdDSP
       - sdk: Accelerate.framework

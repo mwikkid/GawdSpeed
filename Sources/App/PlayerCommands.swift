@@ -4,6 +4,7 @@
 // Menu bar: every action with its shortcut shown (spec §5.11
 // "Discoverability"). The shortcuts are the spec's (§5.2, §5.3, §5.7).
 
+import AppKit
 import SwiftUI
 
 struct PlayerCommands: Commands {
@@ -114,6 +115,11 @@ struct PlayerCommands: Commands {
         }
 
         CommandGroup(replacing: .help) {
+            Button("GawdSpeed Guide") {
+                if let guide = Bundle.main.url(forResource: "GawdSpeed-Guide", withExtension: "pdf") {
+                    NSWorkspace.shared.open(guide)
+                }
+            }
             Button("Keyboard Shortcuts") { player.showingShortcuts = true }
                 .keyboardShortcut("?", modifiers: [])
                 .disabled(typing)

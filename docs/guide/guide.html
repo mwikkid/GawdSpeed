@@ -1,0 +1,145 @@
+<!doctype html>
+<!-- SPDX-License-Identifier: GPL-3.0-or-later
+     Copyright (C) 2026 Earl Scioneaux, III
+     The GawdSpeed guide. scripts/make-guide.sh prints it to GawdSpeed-Guide.pdf,
+     which ships inside the app (Help menu) and in the DMG. -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>GawdSpeed Guide</title>
+<style>
+  @page { size: Letter; margin: 0.45in 0.55in; }
+  :root { --ink: #1c1f24; --muted: #5d6470; --accent: #d9861c; --blue: #2f8fd0; --rule: #e3e5ea; }
+  * { box-sizing: border-box; }
+  body { font: 9pt/1.36 -apple-system, "Helvetica Neue", sans-serif; color: var(--ink); margin: 0; }
+  h1 { font-size: 20pt; margin: 0; letter-spacing: -0.3px; }
+  h1 small { font-size: 10pt; font-weight: 500; color: var(--muted); margin-left: 8px; letter-spacing: 0; }
+  h2 { font-size: 12pt; margin: 16px 0 6px; padding-bottom: 3px; border-bottom: 1px solid var(--rule); }
+  p { margin: 4px 0 8px; }
+  .lede { color: var(--muted); margin: 2px 0 6px; }
+
+  .shot { position: relative; margin: 16px 0 12px; }
+  .shot img { width: 100%; display: block; border-radius: 10px; }
+  /* No box-shadow: Chrome prints a blurred shadow as a dark square. */
+  .pin { position: absolute; width: 20px; height: 20px; margin: -10px 0 0 -10px; border-radius: 50%;
+         background: var(--accent); color: #fff; font: 700 9.5pt/16px -apple-system, sans-serif;
+         text-align: center; border: 2px solid #fff; }
+
+  ol.controls { columns: 2; column-gap: 22px; margin: 0; padding: 0; list-style: none; counter-reset: c; }
+  ol.controls li { break-inside: avoid; margin: 0 0 5px; padding-left: 27px; position: relative; counter-increment: c; }
+  ol.controls li::before { content: counter(c); position: absolute; left: 0; top: 1px; width: 18px; height: 18px;
+         border-radius: 50%; background: var(--accent); color: #fff; font: 700 9pt/18px -apple-system, sans-serif;
+         text-align: center; }
+  b { font-weight: 600; }
+  kbd { font: 600 8.5pt -apple-system, sans-serif; background: #f1f2f5; border: 1px solid #d9dce2;
+        border-bottom-width: 2px; border-radius: 4px; padding: 0 4px; white-space: nowrap; }
+
+  .page2 { break-before: page; }
+  .cols { display: flex; gap: 24px; }
+  .cols > div { flex: 1; }
+  ol.steps { margin: 4px 0 8px; padding-left: 18px; }
+  ol.steps li { margin-bottom: 4px; }
+  table { border-collapse: collapse; width: 100%; font-size: 9.5pt; }
+  td { padding: 2.5px 0; vertical-align: top; border-bottom: 1px solid #f0f1f4; }
+  td:first-child { width: 42%; padding-right: 8px; }
+  .note { color: var(--muted); font-size: 9pt; }
+  footer { margin-top: 16px; padding-top: 8px; border-top: 1px solid var(--rule); color: var(--muted); font-size: 8.5pt;
+           display: flex; justify-content: space-between; }
+</style>
+</head>
+<body>
+
+<h1>GawdSpeed <small>Practice &amp; transcription player · Guide</small></h1>
+<p class="lede">Slow a song down without changing its key, loop the hard part, and work it out by ear. Hold the pointer over any control for a tooltip.</p>
+
+<div class="shot">
+  <img src="window.png" alt="The GawdSpeed window">
+  <span class="pin" style="left:14.5%; top:-1.6%">1</span>
+  <span class="pin" style="left:30.5%; top:-1.6%">2</span>
+  <span class="pin" style="left:73.3%; top:-1.6%">3</span>
+  <span class="pin" style="left:93.2%; top:-1.6%">4</span>
+  <span class="pin" style="left:1.6%; top:15.6%">5</span>
+  <span class="pin" style="left:1.6%; top:36%">6</span>
+  <span class="pin" style="left:46.9%; top:22.6%">7</span>
+  <span class="pin" style="left:13.2%; top:68.6%">8</span>
+  <span class="pin" style="left:43.6%; top:68.6%">9</span>
+  <span class="pin" style="left:80.6%; top:62.6%">10</span>
+  <span class="pin" style="left:30%; top:78.6%">11</span>
+  <span class="pin" style="left:10%; top:84.2%">12</span>
+  <span class="pin" style="left:45.5%; top:84.2%">13</span>
+  <span class="pin" style="left:81.6%; top:84.6%">14</span>
+</div>
+
+<ol class="controls">
+  <li><b>Open…</b> a song or video (<kbd>⌘O</kbd>), or drag a file onto the window: WAV, MP3, FLAC, AIFF, M4A, OGG, Opus, MP4, MOV and more.</li>
+  <li><b>Link field.</b> Paste a YouTube, SoundCloud, Bandcamp or Vimeo link and press <kbd>Return</kbd> (<kbd>⌘U</kbd> jumps here). The audio goes to Music ▸ GawdSpeed ▸ Downloads. The first time, GawdSpeed sets up the free yt-dlp tool it uses.</li>
+  <li><b>Regions.</b> Named sections of this song, like “Bridge lick”. Highlight a section and save it here (<kbd>⌘D</kbd>); later, jump back to it or loop it. They show as orange bars on the overview.</li>
+  <li><b>Algorithm A | B.</b> Two ways of slowing audio down. Try both: one may sound better on a given song.</li>
+  <li><b>Overview.</b> The whole song. The box shows what the big waveform is showing; drag it to move around.</li>
+  <li><b>Waveform.</b> Click to jump; drag across it to highlight a section (a click outside the highlight clears it). Pinch, <kbd>⌘</kbd>-scroll or <kbd>⌘+</kbd>/<kbd>⌘−</kbd> to zoom; scroll to move. Right-click for more.</li>
+  <li><b>The highlight.</b> Drag its edges, or its middle, to adjust it. Edges snap to where the wave crosses zero, which keeps loops click-free.</li>
+  <li><b>Transport.</b> Back to start (or the loop’s start), back 5 s, play / pause (<kbd>Space</kbd>), ahead 5 s, and where you are in the song, in the song’s own time whatever the speed.</li>
+  <li><b>Loop, In, Out, ✕.</b> Loop repeats the highlight (<kbd>L</kbd>). <kbd>I</kbd> and <kbd>O</kbd> set the start and end at the playhead, or click a time to type one. ✕ (or <kbd>Esc</kbd>) clears the highlight.</li>
+  <li><b>Export…</b> (<kbd>⌘E</kbd>) saves the slowed-down audio as a new file (the whole song or the highlight) as WAV, AIFF, FLAC, ALAC, AAC or MP3. The original is never changed.</li>
+  <li><b>Speed.</b> 25% to 100%, and the key stays the same. <kbd>−</kbd>/<kbd>=</kbd> change it by 5% (<kbd>⌥</kbd> for 1%); 50, 75 and 100 jump straight there.</li>
+  <li><b>transpose and tune.</b> Change the key without changing the speed: transpose in semitones (<kbd>[</kbd>/<kbd>]</kbd>); tune in cents, for recordings slightly sharp or flat (<kbd>⌥[</kbd>/<kbd>⌥]</kbd>).</li>
+  <li><b>original key.</b> Appears only while the key is shifted. Click it (or <kbd>⌘0</kbd>) to go back.</li>
+  <li><b>High-pass and low-pass.</b> High-pass cuts bass (turn it up); low-pass cuts treble (turn it down). Drag or scroll; double-click to switch off. Handy for picking out a bass line or a hi-hat part.</li>
+</ol>
+
+<div class="page2">
+<div class="cols">
+  <div>
+    <h2>Your first loop, in 30 seconds</h2>
+    <ol class="steps">
+      <li>Drag a song onto the window.</li>
+      <li>Click <b>75</b> (or drag the speed slider).</li>
+      <li>Drag across the hard part of the waveform to highlight it.</li>
+      <li>Press <kbd>L</kbd> to loop it, then <kbd>Space</kbd> to play.</li>
+      <li>When it’s comfortable, nudge the speed up with <kbd>=</kbd>.</li>
+    </ol>
+    <p class="note">GawdSpeed remembers each song: speed, key, filters, loop, regions and where you were come back when you open it again. <kbd>⌘Z</kbd> undoes changes to the controls and the loop.</p>
+
+    <h2>Settings (<kbd>⌘,</kbd>)</h2>
+    <table>
+      <tr><td>Allow speeds above 100%</td><td>Up to 150%, for checking a part at tempo.</td></tr>
+      <tr><td>Snap loop points to zero crossings</td><td>On by default; avoids clicks at the loop point.</td></tr>
+      <tr><td>Loop pre-roll</td><td>Starts each pass up to 2 s early, for a run-up.</td></tr>
+      <tr><td>Follow the playhead</td><td>Page by page, or smooth scrolling.</td></tr>
+      <tr><td>Play through</td><td>Which speakers, headphones or interface to use.</td></tr>
+      <tr><td>Import from websites</td><td>Where yt-dlp is, update it, where downloads go.</td></tr>
+      <tr><td>Algorithm A: lighter preset</td><td>Uses less processing; try it on an older Mac.</td></tr>
+    </table>
+  </div>
+  <div>
+    <h2>Keyboard shortcuts</h2>
+    <table>
+      <tr><td><kbd>Space</kbd></td><td>Play / pause</td></tr>
+      <tr><td><kbd>Return</kbd></td><td>Back to the loop start, or the song’s start</td></tr>
+      <tr><td><kbd>←</kbd> <kbd>→</kbd></td><td>Back / ahead 1 s (<kbd>⇧</kbd> 5 s, <kbd>⌥</kbd> 0.1 s)</td></tr>
+      <tr><td><kbd>−</kbd> <kbd>=</kbd></td><td>Slower / faster by 5% (<kbd>⌥</kbd> 1%)</td></tr>
+      <tr><td><kbd>[</kbd> <kbd>]</kbd></td><td>Transpose down / up a semitone</td></tr>
+      <tr><td><kbd>⌥[</kbd> <kbd>⌥]</kbd></td><td>Tune down / up 5 cents</td></tr>
+      <tr><td><kbd>⌘0</kbd></td><td>Back to the original key</td></tr>
+      <tr><td><kbd>I</kbd> <kbd>O</kbd></td><td>Loop start / end at the playhead</td></tr>
+      <tr><td><kbd>L</kbd></td><td>Loop on / off</td></tr>
+      <tr><td><kbd>Esc</kbd></td><td>Clear the highlight</td></tr>
+      <tr><td><kbd>⌘D</kbd></td><td>Save the highlight as a region</td></tr>
+      <tr><td><kbd>⌘+</kbd> <kbd>⌘−</kbd></td><td>Zoom in / out</td></tr>
+      <tr><td><kbd>⌘O</kbd> <kbd>⌘U</kbd> <kbd>⌘E</kbd></td><td>Open a file / a link · Export</td></tr>
+      <tr><td><kbd>⌘Z</kbd> <kbd>⇧⌘Z</kbd></td><td>Undo / redo</td></tr>
+      <tr><td><kbd>?</kbd></td><td>Show all shortcuts in the app</td></tr>
+    </table>
+    <h2>Good to know</h2>
+    <p class="note">At 100% speed with no key change, GawdSpeed plays the original audio untouched. Only download audio you have the right to use. Help ▸ Show Tips replays the first-run tips.</p>
+  </div>
+</div>
+
+<footer>
+  <span>GawdSpeed is free software under the GNU GPL v3 or later · github.com/mwikkid/GawdSpeed</span>
+  <span>© 2026 Earl Scioneaux, III · iii.audio</span>
+</footer>
+</div>
+
+</body>
+</html>
