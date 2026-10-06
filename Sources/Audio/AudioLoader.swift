@@ -54,10 +54,58 @@ struct LoadError: LocalizedError {
 
 enum AudioLoader {
     /// File types the Open panel offers.
-    static let openableExtensions = ["wav", "wave", "aif", "aiff", "aifc", "caf", "mp3", "m4a", "aac",
-                                     "alac", "flac", "mp4", "mov", "m4v"]
+    /// Formats AVFoundation reads itself (spec §5.10).
+    static let nativeExtensions = ["wav", "wave", "aif", "aiff", "aifc", "caf", "mp3", "m4a", "aac",
+                                   "alac", "flac", "mp4", "mov", "m4v"]
+    /// Formats that go straight to the bundled ffmpeg.
+    static let ffmpegExtensions = ["ogg", "oga", "opus", "webm", "mkv", "mka", "avi", "wma", "asf", "ape",
+                                   "wv", "tta", "ac3", "eac3", "dsf", "dff", "amr", "w64"]
+    static var openableExtensions: [String] { nativeExtensions + ffmpegExtensions }
 
-    static func load(_ url: URL, sampleRate: Double) async throws -> SourceAudio {
+    /// Decodes `url` to planar float at `sampleRate` (nil keeps the file's own
+    /// rate). Tries AVFoundation first; anything it can't open, or any
+    /// ffmpeg-only format, goes through the bundled ffmpeg (spec §5.1, §5.10).
+    static func load(_ url: URL, sampleRate: Double?) async throws -> SourceAudio {
+        if !ffmpegExtensions.contains(url.pathExtension.lowercased()) {
+            do {
+                return try await loadNative(url, sampleRate: sampleRate)
+            } catch let error as LoadError where error.kind == .protected {
+                throw error
+            } catch {
+                guard FFmpegRunner.executable != nil else { throw error }
+            }
+        }
+        return try await loadViaFFmpeg(url, sampleRate: sampleRate)
+    }
+
+    /// ffmpeg decodes to a temporary float CAF (more than two channels folded
+    /// to stereo), which AVFoundation then reads; the temp file is removed.
+    private static func loadViaFFmpeg(_ url: URL, sampleRate: Double?) async throws -> SourceAudio {
+        let folder = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask)[0]
+            .appendingPathComponent("GawdSpeed/Decoded", isDirectory: true)
+        try? FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        let temp = folder.appendingPathComponent(UUID().uuidString + ".caf")
+        defer { try? FileManager.default.removeItem(at: temp) }
+
+        var arguments = ["-loglevel", "info", "-i", url.path, "-vn", "-map", "0:a:0",
+                         "-af", "aformat=channel_layouts=mono|stereo"]
+        if let sampleRate { arguments += ["-ar", String(Int(sampleRate.rounded()))] }
+        arguments += ["-c:a", "pcm_f32le", "-f", "caf", temp.path]
+        let stderr: String
+        do {
+            stderr = try await FFmpegRunner.run(arguments)
+        } catch let failure as FFmpegRunner.Failure {
+            let tail = failure.stderr.split(separator: "\n").suffix(4).joined(separator: "\n")
+            throw LoadError(kind: .unreadable, details: tail.isEmpty ? failure.localizedDescription : tail)
+        }
+        let tags = FFmpegRunner.tags(fromStderr: stderr)
+        return try await loadNative(temp, sampleRate: sampleRate, original: url,
+                                    title: tags["title"], artist: tags["artist"])
+    }
+
+    private static func loadNative(_ url: URL, sampleRate requestedRate: Double?, original: URL? = nil,
+                                   title titleOverride: String? = nil, artist artistOverride: String? = nil)
+        async throws -> SourceAudio {
         let asset = AVURLAsset(url: url)
         let tracks: [AVAssetTrack]
         do {
@@ -77,7 +125,12 @@ enum AudioLoader {
 
         let sourceChannels = await channelCount(of: track)
         let channels = min(max(sourceChannels, 1), 2)
-        let (title, artist) = await tags(of: asset, fallback: url.deletingPathExtension().lastPathComponent)
+        let fileURL = original ?? url
+        var (title, artist) = await tags(of: asset, fallback: fileURL.deletingPathExtension().lastPathComponent)
+        if let titleOverride { title = titleOverride }
+        if let artistOverride { artist = artistOverride }
+        let fileRate = await nativeRate(of: track)
+        let sampleRate = requestedRate ?? fileRate ?? 48_000
 
         // Interleaved Float32 at the device rate; Core Audio resamples and,
         // for more than two channels, downmixes.
@@ -153,13 +206,11 @@ enum AudioLoader {
             return buffer
         }
         return SourceAudio(channels: owned, frameCount: frameCount, sampleRate: sampleRate,
-                           title: title, artist: artist, url: url)
+                           title: title, artist: artist, url: fileURL)
     }
 
-    /// The file's own sample rate (export defaults to it, spec §5.10).
-    static func nativeSampleRate(of url: URL) async -> Double? {
-        guard let track = try? await AVURLAsset(url: url).loadTracks(withMediaType: .audio).first,
-              let descriptions = try? await track.load(.formatDescriptions),
+    private static func nativeRate(of track: AVAssetTrack) async -> Double? {
+        guard let descriptions = try? await track.load(.formatDescriptions),
               let first = descriptions.first,
               let basic = CMAudioFormatDescriptionGetStreamBasicDescription(first) else { return nil }
         let rate = basic.pointee.mSampleRate
@@ -174,14 +225,20 @@ enum AudioLoader {
     }
 
     private static func tags(of asset: AVAsset, fallback: String) async -> (String, String?) {
-        guard let items = try? await asset.load(.commonMetadata) else { return (fallback, nil) }
-        func value(_ key: AVMetadataKey) async -> String? {
-            guard let item = AVMetadataItem.metadataItems(from: items, withKey: key, keySpace: .common).first
-            else { return nil }
-            return try? await item.load(.stringValue)
+        let common = (try? await asset.load(.commonMetadata)) ?? []
+        // FLAC (and Ogg) tags are Vorbis comments, which AVFoundation lists as
+        // "vorb/TITLE" etc. and leaves out of commonMetadata.
+        let all = (try? await asset.load(.metadata)) ?? []
+        func value(_ key: AVMetadataKey, vorbis: String) async -> String? {
+            if let item = AVMetadataItem.metadataItems(from: common, withKey: key, keySpace: .common).first,
+               let text = try? await item.load(.stringValue), !text.isEmpty { return text }
+            for item in all where item.identifier?.rawValue.uppercased() == "VORB/\(vorbis)" {
+                if let text = try? await item.load(.stringValue), !text.isEmpty { return text }
+            }
+            return nil
         }
-        let title = await value(.commonKeyTitle)
-        let artist = await value(.commonKeyArtist)
-        return ((title?.isEmpty == false ? title : nil) ?? fallback, artist)
+        let title = await value(.commonKeyTitle, vorbis: "TITLE")
+        let artist = await value(.commonKeyArtist, vorbis: "ARTIST")
+        return (title ?? fallback, artist)
     }
 }

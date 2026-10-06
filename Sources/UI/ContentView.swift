@@ -10,6 +10,7 @@ import SwiftUI
 struct ContentView: View {
     @Bindable var player: PlayerViewModel
     @State private var tooltips = TooltipCenter()
+    @Environment(\.undoManager) private var undoManager
 
     var body: some View {
         GeometryReader { geometry in
@@ -17,6 +18,7 @@ struct ContentView: View {
                             geometry.size.height / Theme.designSize.height)
             MainLayout(player: player)
                 .frame(width: Theme.designSize.width, height: Theme.designSize.height)
+                .overlay { FirstRunTips(step: $player.tipStep) }
                 .overlay(alignment: .topLeading) { TooltipLayer(bounds: Theme.designSize) }
                 .coordinateSpace(name: TooltipCenter.space)
                 .environment(tooltips)
@@ -25,7 +27,12 @@ struct ContentView: View {
         }
         .ignoresSafeArea()
         .background(Theme.background)
+        .onAppear { player.undoManager = undoManager }
+        .onChange(of: undoManager) { _, new in player.undoManager = new }
         .background(WindowConfigurator())
+        .sheet(isPresented: $player.showingShortcuts) {
+            ShortcutSheet().preferredColorScheme(.dark)
+        }
         .sheet(item: $player.exportRequest) { request in
             ExportSheet(player: player, request: request)
                 .preferredColorScheme(.dark)
@@ -119,6 +126,16 @@ private struct TopBar: View {
             }
 
             Spacer()
+
+            Button { player.showingRegions.toggle() } label: {
+                Label(player.regions.isEmpty ? "Regions" : "Regions (\(player.regions.count))",
+                      systemImage: "bookmark").font(.system(size: 12))
+            }
+            .popover(isPresented: $player.showingRegions, arrowEdge: .bottom) {
+                RegionsPanel(player: player).preferredColorScheme(.dark)
+            }
+            .tip(HelpText.regions)
+            .disabled(!player.hasFile)
 
             Text("Algorithm").font(.system(size: 12)).foregroundStyle(Theme.secondaryText)
             Picker("Algorithm", selection: $player.algorithm) {

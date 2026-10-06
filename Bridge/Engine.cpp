@@ -94,6 +94,7 @@ struct GSEngine {
     int channels = 0;
     int64_t frames = 0;
     std::vector<std::unique_ptr<Voice>> voices; // bypass x2, A x2, B x2
+    uint32_t stretcherFlags = 0;
     PlanarBuffer mix, incoming;
     ButterworthFilter highpass{ButterworthFilter::Type::HighPass};
     ButterworthFilter lowpass{ButterworthFilter::Type::LowPass};
@@ -147,7 +148,8 @@ struct GSEngine {
         for (int copy = 0; copy < 2; ++copy) {
             voices.push_back(std::make_unique<Voice>(Path::Bypass, nullptr, sourceChannels.data(), channels, frames));
             voices.push_back(std::make_unique<Voice>(
-                Path::A, makeSignalsmithStretcher(sampleRate, channels, maxBlock, false, source),
+                Path::A, makeSignalsmithStretcher(sampleRate, channels, maxBlock,
+                                                  (stretcherFlags & GSStretcherFlagCheaper) != 0, source),
                 sourceChannels.data(), channels, frames));
             voices.push_back(std::make_unique<Voice>(
                 Path::B, makeRubberBandStretcher(sampleRate, channels, maxBlock, source),
@@ -324,6 +326,8 @@ GSEngine *gs_engine_create(double sampleRate, int32_t outputChannels, int32_t ma
 }
 
 void gs_engine_destroy(GSEngine *engine) { delete engine; }
+
+void gs_engine_set_options(GSEngine *engine, uint32_t flags) { engine->stretcherFlags = flags; }
 
 void gs_engine_set_source(GSEngine *engine, const float *const *channels, int32_t channelCount, int64_t frames) {
     engine->setSource(channels, std::clamp(channelCount, 0, 2), frames);

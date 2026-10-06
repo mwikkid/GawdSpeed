@@ -21,6 +21,18 @@ jobs:
       - name: Install XcodeGen
         run: brew install xcodegen
 
+      # The bundled ffmpeg (spec §8.1): rebuilt only when the build script changes.
+      - name: Cache ffmpeg
+        uses: actions/cache@v4
+        with:
+          path: |
+            build/ffmpeg
+            build/ffmpeg-src
+          key: ffmpeg-${{ hashFiles('scripts/build-ffmpeg.sh') }}
+
+      - name: Build ffmpeg
+        run: test -x build/ffmpeg/ffmpeg || scripts/build-ffmpeg.sh
+
       - name: Generate project
         run: xcodegen generate
 

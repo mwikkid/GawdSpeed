@@ -28,6 +28,10 @@ typedef struct GSEngine GSEngine;
 GSEngine *gs_engine_create(double sampleRate, int32_t outputChannels, int32_t maxBlockFrames);
 void gs_engine_destroy(GSEngine *engine);
 
+/// Stretcher options (GSStretcherFlags) for the voices built by the next
+/// gs_engine_set_source, e.g. Algorithm A's cheaper preset.
+void gs_engine_set_options(GSEngine *engine, uint32_t flags);
+
 /// Borrows planar source audio (already at the engine's sample rate). The
 /// caller keeps it alive until another source is set or the engine is
 /// destroyed. Builds the stretchers for this channel count, so call it off

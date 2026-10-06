@@ -7,6 +7,13 @@
 
 import Foundation
 
+/// A saved section with a name, e.g. "Verse 1 solo" (spec §5.9).
+struct NamedRegion: Codable, Equatable, Identifiable {
+    var id = UUID()
+    var name: String
+    var selection: Selection
+}
+
 struct SongSession: Codable, Equatable {
     var speed: Double
     var semitones: Int
@@ -19,6 +26,8 @@ struct SongSession: Codable, Equatable {
     var position: Double
     var visibleStart: Double
     var visibleDuration: Double
+    /// Optional so sessions saved before regions existed still load.
+    var regions: [NamedRegion]? = nil
 }
 
 struct SessionStore {

@@ -22,6 +22,7 @@ struct ExportSheet: View {
     @AppStorage("exportFormat") private var formatRaw = ExportFormat.wav.rawValue
     @AppStorage("exportBitDepth") private var bitDepth = 24
     @AppStorage("exportAACBitRate") private var aacBitRate = 256
+    @AppStorage("exportMP3BitRate") private var mp3BitRate = 320
     @Environment(\.dismiss) private var dismiss
 
     init(player: PlayerViewModel, request: PlayerViewModel.ExportRequest) {
@@ -69,6 +70,12 @@ struct ExportSheet: View {
                     Picker("Quality", selection: $aacBitRate) {
                         ForEach(ExportFormat.aacBitRates, id: \.self) { Text("\($0) kbps").tag($0) }
                     }
+                } else if format == .mp3 {
+                    Picker("Quality", selection: $mp3BitRate) {
+                        ForEach(ExportFormat.mp3BitRates, id: \.self) {
+                            Text($0 == 0 ? "V0 (variable, best)" : "\($0) kbps").tag($0)
+                        }
+                    }
                 } else {
                     Picker("Bit depth", selection: $bitDepth) {
                         ForEach(format.bitDepths, id: \.self) { Text($0 == 32 ? "32-bit float" : "\($0)-bit").tag($0) }
@@ -114,6 +121,7 @@ struct ExportSheet: View {
         o.format = format
         o.bitDepth = format.bitDepths.contains(bitDepth) ? bitDepth : 24
         o.aacBitRate = aacBitRate
+        o.mp3BitRate = mp3BitRate
         return o
     }
 

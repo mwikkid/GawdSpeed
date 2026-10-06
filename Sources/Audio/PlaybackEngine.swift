@@ -7,6 +7,7 @@
 // or retains anything (spec §3 rule 3).
 
 import AVFoundation
+import CoreAudio
 import GawdDSP
 
 final class PlaybackEngine {
@@ -37,6 +38,19 @@ final class PlaybackEngine {
         return (try? avEngine.start()) != nil
     }
 
+    /// Sends output to a specific device (nil: the system default). Output stops;
+    /// the caller reloads or restarts, since the device's rate may differ.
+    func setOutputDevice(_ id: AudioDeviceID?) {
+        avEngine.stop()
+        guard let target = id ?? OutputDevices.systemDefault, let unit = avEngine.outputNode.audioUnit else { return }
+        var device = target
+        AudioUnitSetProperty(unit, kAudioOutputUnitProperty_CurrentDevice, kAudioUnitScope_Global, 0,
+                             &device, UInt32(MemoryLayout<AudioDeviceID>.size))
+    }
+
+    /// Algorithm A's "cheaper" preset (Settings ▸ Advanced). Applies when a song is (re)loaded.
+    var signalsmithCheaper = false
+
     /// The output device's sample rate; sources are decoded to this rate.
     var outputSampleRate: Double {
         let rate = avEngine.outputNode.outputFormat(forBus: 0).sampleRate
@@ -63,6 +77,7 @@ final class PlaybackEngine {
         guard let engine = gs_engine_create(audio.sampleRate, 2, Self.maxBlock) else {
             throw LoadError(kind: .unreadable, details: "gs_engine_create failed")
         }
+        gs_engine_set_options(engine, signalsmithCheaper ? UInt32(GSStretcherFlagCheaper.rawValue) : 0)
         var pointers: [UnsafePointer<Float>?] = audio.channels.map { UnsafePointer($0.baseAddress) }
         pointers.withUnsafeMutableBufferPointer {
             gs_engine_set_source(engine, $0.baseAddress!, Int32(audio.channels.count), Int64(audio.frameCount))

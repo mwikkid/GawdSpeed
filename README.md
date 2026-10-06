@@ -3,10 +3,10 @@
 A practice and transcription player for macOS. Load a song, slow it down
 without changing its pitch, loop the hard part, and work it out by ear.
 
-> **Status:** early development. Phases 1 and 2 work: open a song, slow it
-> down, transpose, filter, A/B the two algorithms, zoom the waveform, loop a
-> section, and export. Each song remembers its settings. Extra formats (via
-> ffmpeg) and importing from websites come next.
+> **Status:** early development. Phases 1–3 work: open almost any audio or
+> video file, slow it down, transpose, filter, A/B the two algorithms, zoom
+> the waveform, loop and name sections, and export to WAV, AIFF, FLAC, ALAC,
+> AAC or MP3. Importing from websites and signed releases come next.
 
 ## Features (planned)
 
@@ -34,9 +34,11 @@ Algorithm B costs about 7× as much as A, and both are far below what real-time 
 ## Building
 
 Requires macOS 14+, Xcode, and [XcodeGen](https://github.com/yonaskolb/XcodeGen)
-(`brew install xcodegen`).
+(`brew install xcodegen`). `scripts/build-ffmpeg.sh` builds the bundled ffmpeg
+(about a minute); without it the app falls back to a Homebrew ffmpeg if there is one.
 
 ```bash
+scripts/build-ffmpeg.sh
 xcodegen generate
 xcodebuild -project GawdSpeed.xcodeproj -scheme GawdSpeed -destination 'platform=macOS' test
 scripts/check-licenses.sh

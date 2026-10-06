@@ -82,6 +82,12 @@ struct OverviewStrip: View {
                     WaveDraw.bars(&context, size: size, pyramid: player.pyramid, audio: player.sourceAudio,
                                   start: 0, duration: duration, playedUntil: position,
                                   color: Theme.waveform, playedColor: Theme.waveformPlayed)
+                    for region in player.regions { // saved regions: a bar along the top
+                        let x0 = CGFloat(region.selection.start / duration) * size.width
+                        let x1 = CGFloat(region.selection.end / duration) * size.width
+                        context.fill(Path(roundedRect: CGRect(x: x0, y: 1, width: max(3, x1 - x0), height: 3), cornerRadius: 1.5),
+                                     with: .color(Theme.accent.opacity(0.85)))
+                    }
                     let box = CGRect(x: CGFloat(player.visibleStart / duration) * size.width, y: 0.5,
                                      width: max(4, CGFloat(player.visibleDuration / duration) * size.width),
                                      height: size.height - 1)

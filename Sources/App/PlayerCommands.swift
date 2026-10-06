@@ -10,7 +10,7 @@ struct PlayerCommands: Commands {
     let player: PlayerViewModel
     @Environment(\.openWindow) private var openWindow
 
-    /// Single-key shortcuts step aside while a text field has the keyboard.
+    /// Single-key shortcuts step aside while a text field or sheet has the keyboard.
     private var typing: Bool { player.isEditingText }
 
     var body: some Commands {
@@ -44,6 +44,9 @@ struct PlayerCommands: Commands {
             Button(player.loopEnabled ? "Stop Looping" : "Loop Highlighted Section") { player.toggleLoop() }
                 .keyboardShortcut("l", modifiers: [])
                 .disabled(typing)
+            Button("Save Section as Region") { player.addRegion() }
+                .keyboardShortcut("d")
+            Button("Show Regions") { player.showingRegions = true }
             Button("Clear Selection") { player.clearSelection() }
                 .keyboardShortcut(.escape, modifiers: [])
                 .disabled(typing || player.selection == nil)
@@ -106,6 +109,15 @@ struct PlayerCommands: Commands {
                 Text("Algorithm B").tag(Algorithm.b)
             }
             .pickerStyle(.inline)
+        }
+
+        CommandGroup(replacing: .help) {
+            Button("Keyboard Shortcuts") { player.showingShortcuts = true }
+                .keyboardShortcut("?", modifiers: [])
+                .disabled(typing)
+            Button("Show Tips") { player.tipStep = 0 }
+            Divider()
+            Link("GawdSpeed on GitHub", destination: URL(string: "https://github.com/mwikkid/GawdSpeed")!)
         }
 
         CommandMenu("Transpose") {

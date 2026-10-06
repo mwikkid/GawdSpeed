@@ -25,6 +25,7 @@ enum HelpText {
     static let loop = "Repeat the highlighted section over and over (L)"
     static let loopIn = "Where the loop starts. Click to type a time, or press I at the playhead"
     static let loopOut = "Where the loop ends. Click to type a time, or press O at the playhead"
+    static let regions = "Saved sections of this song, like \"Verse 1 solo\". Highlight a section and save it here to come back to it (⌘D)"
     static let export = "Save the slowed-down audio as a new file: the whole song or just the highlighted section (⌘E)"
     static let time = "Where you are in the song"
 }

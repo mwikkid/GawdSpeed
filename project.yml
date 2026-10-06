@@ -77,6 +77,28 @@ targets:
     dependencies:
       - target: GawdDSP
       - sdk: Accelerate.framework
+    postBuildScripts:
+      - name: Bundle ffmpeg
+        # Copies scripts/build-ffmpeg.sh's output into Contents/Helpers, signed
+        # with the app's identity and the hardened runtime (spec §8.1). Without
+        # it the app still runs and falls back to a system ffmpeg.
+        script: |
+          src="${SRCROOT}/build/ffmpeg/ffmpeg"
+          dest="${TARGET_BUILD_DIR}/${CONTENTS_FOLDER_PATH}/Helpers/ffmpeg"
+          if [ -f "$src" ]; then
+            mkdir -p "$(dirname "$dest")"
+            cp -f "$src" "$dest"
+            cp -f "${SRCROOT}/build/ffmpeg/BUILDINFO.txt" "${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/ffmpeg-BUILDINFO.txt"
+            codesign --force --options runtime --sign "${EXPANDED_CODE_SIGN_IDENTITY:--}" "$dest"
+          else
+            echo "warning: build/ffmpeg/ffmpeg not found; run scripts/build-ffmpeg.sh to bundle ffmpeg"
+          fi
+        inputFiles:
+          - $(SRCROOT)/build/ffmpeg/ffmpeg
+          - $(SRCROOT)/build/ffmpeg/BUILDINFO.txt
+        outputFiles:
+          - $(TARGET_BUILD_DIR)/$(CONTENTS_FOLDER_PATH)/Helpers/ffmpeg
+          - $(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/ffmpeg-BUILDINFO.txt
     settings:
       base:
         PRODUCT_NAME: GawdSpeed
@@ -87,6 +109,9 @@ targets:
         INFOPLIST_KEY_NSHumanReadableCopyright: "Copyright (C) 2026 Earl Scioneaux, III. Free software under the GNU GPL v3 or later."
         ENABLE_HARDENED_RUNTIME: YES
         ENABLE_APP_SANDBOX: NO
+        # The "Bundle ffmpeg" script signs the helper; codesign can't run inside
+        # Xcode's script sandbox ("internal error in Code Signing subsystem").
+        ENABLE_USER_SCRIPT_SANDBOXING: NO
         OTHER_LDFLAGS: ["-lc++"]
 
   GawdSpeedTests:
@@ -97,6 +122,7 @@ targets:
       # App code with no UI, compiled into the tests directly (no host app).
       - path: Sources/Audio/AudioLoader.swift
       - path: Sources/Audio/ExportRenderer.swift
+      - path: Sources/Import/FFmpegRunner.swift
       - path: Sources/Analysis
       - path: Sources/Persistence
     dependencies:

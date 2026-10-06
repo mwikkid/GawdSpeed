@@ -3,6 +3,23 @@
 Changes to, and settlements of, the spec (`docs/SPEC.md`), newest first. Each entry gives
 the date, who decided, and why.
 
+## 2026-10-06 (Phase 3)
+
+- **Named regions open as a panel from a "Regions" button**, not a permanent sidebar
+  (spec §5.9). The window scales as one fixed-shape piece, so a sidebar would shrink
+  everything else. Saved regions also show as orange bars on the overview strip.
+- **First-run tips are click-only.** A Return shortcut on the tips' Next button worked
+  once, then the menu's Return ("Back to Start") took the key back.
+- **Undo groups by stillness:** a change becomes one undo step after half a second
+  without further changes, so a whole knob turn or slider drag undoes in one go.
+- **FLAC tags are read from AVFoundation's Vorbis-comment items** (`vorb/TITLE`). Apple
+  leaves them out of its "common" metadata, so FLAC files showed their file name
+  instead of their title. The FLAC export test caught this.
+- **Bundled ffmpeg 9.0.2 with LAME 3.100**, built by `scripts/build-ffmpeg.sh`: universal,
+  8.8 MB, network off, GPL-3.0-or-later as built. CI caches the build. Not built in:
+  hand-written x86 assembly (no `nasm` on the build Mac), so the Intel slice is a little
+  slower at decoding.
+
 ## 2026-10-06 (Phase 2)
 
 - **Saved positions are seconds of source time, not file frames** (Claude). The spec's

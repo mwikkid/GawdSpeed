@@ -46,6 +46,27 @@ folder there must have an entry here headed `ThirdParty/<name>`.
 
 ---
 
+## FFmpeg (bundled command-line tool, `Contents/Helpers/ffmpeg`)
+
+- **Version:** 9.0.2 (`ffmpeg-9.0.2.tar.xz`, SHA-256 `8c3850283eb25fa026482078a04051e0be17347b09ef81a0849bec15a96e002e`)
+- **Upstream:** https://ffmpeg.org
+- **License:** GPL-3.0-or-later as built (`--enable-gpl --enable-version3`) ([LICENSES/GPL-3.0-or-later.txt](LICENSES/GPL-3.0-or-later.txt)); never built with `--enable-nonfree`
+- **Copyright:** the FFmpeg developers
+- **Used as:** our own static build, made by `scripts/build-ffmpeg.sh` from the pinned release above, run as a separate program to decode formats AVFoundation can't and to write FLAC and MP3
+- **Ships in app:** yes. The exact configure lines are in the app at `Contents/Resources/ffmpeg-BUILDINFO.txt`, and every GitHub Release attaches the source archive and the build script.
+- Not vendored in `ThirdParty/`: the source is downloaded and checksum-verified at build time.
+
+## LAME (inside the bundled ffmpeg, for MP3 export)
+
+- **Version:** 3.100 (`lame-3.100.tar.gz`, SHA-256 `ddfe36cab873794038ae2c1210557ad34857a4b6bdc515785d1da9e175b1da1e`)
+- **Upstream:** https://lame.sourceforge.io
+- **License:** LGPL-2.0-or-later ([LICENSES/LGPL-2.0-or-later-LAME.txt](LICENSES/LGPL-2.0-or-later-LAME.txt))
+- **Copyright:** the LAME developers
+- **Used as:** a static library linked into the bundled ffmpeg. The one build-time change: `lame_init_old` is removed from `include/libmp3lame.sym`, an export list that still names a removed function.
+- **Ships in app:** yes, inside `ffmpeg`
+
+---
+
 ## iii.audio name and logo: `Sources/Resources/Assets.xcassets/iiiAudioWordmark.imageset`
 
 - **Copyright:** (C) 2026 Earl Scioneaux, III. All rights reserved.

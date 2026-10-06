@@ -9,23 +9,30 @@ import Foundation
 import GawdDSP
 
 enum ExportFormat: String, CaseIterable, Identifiable {
-    case wav, aiff, alac, aac
+    case wav, aiff, flac, alac, aac, mp3
     var id: String { rawValue }
 
     var displayName: String {
         switch self {
         case .wav: "WAV"
         case .aiff: "AIFF"
+        case .flac: "FLAC"
         case .alac: "Apple Lossless (ALAC)"
         case .aac: "AAC (M4A)"
+        case .mp3: "MP3"
         }
     }
+
+    /// Written by the bundled ffmpeg rather than AVAudioFile (spec §5.10).
+    var needsFFmpeg: Bool { self == .flac || self == .mp3 }
 
     var fileExtension: String {
         switch self {
         case .wav: "wav"
         case .aiff: "aiff"
         case .alac, .aac: "m4a"
+        case .flac: "flac"
+        case .mp3: "mp3"
         }
     }
 
@@ -33,12 +40,14 @@ enum ExportFormat: String, CaseIterable, Identifiable {
     var bitDepths: [Int] {
         switch self {
         case .wav: [16, 24, 32]
-        case .aiff, .alac: [16, 24]
-        case .aac: []
+        case .aiff, .alac, .flac: [16, 24]
+        case .aac, .mp3: []
         }
     }
 
     static let aacBitRates = [128, 192, 256]
+    /// 0 means LAME's V0 (best variable bit rate).
+    static let mp3BitRates = [192, 256, 320, 0]
 }
 
 enum ExportSampleRate: Hashable {
@@ -58,6 +67,7 @@ struct ExportOptions {
     var format: ExportFormat = .wav
     var bitDepth: Int = 24
     var aacBitRate: Int = 256
+    var mp3BitRate: Int = 320
     var sampleRate: ExportSampleRate = .matchSource
     var monoSum = false
 
@@ -91,12 +101,13 @@ enum ExportRenderer {
     /// CancellationError (and removes the partial file) if cancelled.
     static func export(from url: URL, options: ExportOptions, to destination: URL,
                        progress: @escaping @Sendable (Double) -> Void) async throws {
-        let rate: Double
+        let requested: Double?
         switch options.sampleRate {
-        case .matchSource: rate = await AudioLoader.nativeSampleRate(of: url) ?? 48_000
-        case .fixed(let value): rate = value
+        case .matchSource: requested = nil // the file's own rate
+        case .fixed(let value): requested = value
         }
-        let audio = try await AudioLoader.load(url, sampleRate: rate)
+        let audio = try await AudioLoader.load(url, sampleRate: requested)
+        let rate = audio.sampleRate
         let outChannels = options.monoSum ? 1 : audio.channels.count
 
         guard let engine = gs_engine_create(rate, Int32(outChannels), Int32(block)) else {
@@ -120,17 +131,29 @@ enum ExportRenderer {
         guard outputFrames > 0 else { throw LoadError(kind: .noAudio, details: "empty export range") }
         gs_engine_start_offline(engine, startFrame)
 
+        // FLAC and MP3: render to a temporary 32-bit float WAV, then encode with ffmpeg.
+        var renderOptions = options
+        var renderURL = destination
+        if options.format.needsFFmpeg {
+            renderOptions.format = .wav
+            renderOptions.bitDepth = 32
+            renderURL = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString + ".wav")
+        }
+        defer { if renderURL != destination { try? FileManager.default.removeItem(at: renderURL) } }
+
         let format = AVAudioFormat(standardFormatWithSampleRate: rate, channels: AVAudioChannelCount(outChannels))!
         let file: AVAudioFile
         do {
-            file = try AVAudioFile(forWriting: destination, settings: fileSettings(options, rate: rate, channels: outChannels),
+            file = try AVAudioFile(forWriting: renderURL, settings: fileSettings(renderOptions, rate: rate, channels: outChannels),
                                    commonFormat: .pcmFormatFloat32, interleaved: false)
         } catch {
             throw LoadError(kind: .unreadable, details: "couldn't create \(destination.path): \(error.localizedDescription)")
         }
         let buffer = AVAudioPCMBuffer(pcmFormat: format, frameCapacity: AVAudioFrameCount(block))!
         let fadeFrames = options.range == nil ? 0 : Int(ExportOptions.selectionFadeSeconds * rate)
-        let dither = options.bitDepth == 16 && options.format != .aac
+        // 16-bit outputs get TPDF dither here, before anything quantizes.
+        let dither = options.bitDepth == 16 && !options.format.bitDepths.isEmpty
+        let renderShare = options.format.needsFFmpeg ? 0.9 : 1.0
         var generator = SystemRandomNumberGenerator()
         let lsb: Float = 1.0 / 32_768
 
@@ -163,11 +186,42 @@ enum ExportRenderer {
                 }
                 try file.write(from: buffer)
                 written += n
-                progress(Double(written) / Double(outputFrames))
+                progress(renderShare * Double(written) / Double(outputFrames))
+            }
+            if options.format.needsFFmpeg {
+                try await encode(renderURL, to: destination, options: options, title: audio.title, artist: audio.artist)
+                progress(1)
             }
         } catch {
             try? FileManager.default.removeItem(at: destination)
             throw error
+        }
+    }
+
+    /// FLAC / MP3 via the bundled ffmpeg, with title, artist and a comment
+    /// noting the speed (spec §5.10).
+    private static func encode(_ wav: URL, to destination: URL, options: ExportOptions,
+                               title: String, artist: String?) async throws {
+        var arguments = ["-loglevel", "error", "-y", "-i", wav.path]
+        switch options.format {
+        case .flac:
+            arguments += ["-c:a", "flac", "-sample_fmt", options.bitDepth == 16 ? "s16" : "s32"]
+            if options.bitDepth == 24 { arguments += ["-bits_per_raw_sample", "24"] }
+        case .mp3:
+            arguments += ["-c:a", "libmp3lame"]
+            arguments += options.mp3BitRate == 0 ? ["-q:a", "0"] : ["-b:a", "\(options.mp3BitRate)k"]
+        default:
+            return
+        }
+        var comment = "GawdSpeed \(Int((options.speed * 100).rounded()))%"
+        if options.transpose != 0 { comment += String(format: " %+gst", options.transpose) }
+        arguments += ["-metadata", "title=\(title)", "-metadata", "comment=\(comment)"]
+        if let artist { arguments += ["-metadata", "artist=\(artist)"] }
+        arguments.append(destination.path)
+        do {
+            try await FFmpegRunner.run(arguments)
+        } catch let failure as FFmpegRunner.Failure {
+            throw LoadError(kind: .unreadable, details: "encoding \(options.format.displayName): \(failure.stderr)")
         }
     }
 
@@ -186,6 +240,8 @@ enum ExportRenderer {
         case .aac:
             settings[AVFormatIDKey] = kAudioFormatMPEG4AAC
             settings[AVEncoderBitRateKey] = options.aacBitRate * 1000
+        case .flac, .mp3:
+            break // encoded by ffmpeg from a float WAV
         }
         return settings
     }

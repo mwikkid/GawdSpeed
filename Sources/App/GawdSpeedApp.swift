@@ -57,6 +57,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
 struct SettingsView: View {
     @Bindable var player: PlayerViewModel
+    @State private var devices: [OutputDevice] = []
 
     var body: some View {
         Form {
@@ -73,8 +74,18 @@ struct SettingsView: View {
                 Text("Page by page").tag(PlayerViewModel.FollowMode.page)
                 Text("Smooth scrolling").tag(PlayerViewModel.FollowMode.smooth)
             }
+            Picker("Play through", selection: $player.outputDeviceUID) {
+                Text("System default").tag(String?.none)
+                ForEach(devices) { Text($0.name).tag(Optional($0.uid)) }
+            }
+            .help("Which speakers, headphones or interface GawdSpeed plays through")
+            Section("Advanced") {
+                Toggle("Algorithm A: lighter preset (uses less processing)", isOn: $player.signalsmithCheaper)
+                    .help("Signalsmith Stretch's \"cheaper\" preset. Try it on an older Mac if playback stutters")
+            }
         }
         .padding(20)
-        .frame(width: 420)
+        .frame(width: 460)
+        .onAppear { devices = OutputDevices.all() }
     }
 }

@@ -126,3 +126,24 @@ final class SessionStoreTests: XCTestCase {
         XCTAssertNotEqual(FileFingerprint.of(a), FileFingerprint.of(b))
     }
 }
+
+final class RegionPersistenceTests: XCTestCase {
+    /// Sessions saved before regions existed must still load (regions = nil).
+    func testOldSessionWithoutRegionsLoads() throws {
+        let old = #"{"algorithm":"B","cents":0,"highpassKnob":0,"loopEnabled":false,"lowpassKnob":1,"position":3,"semitones":0,"speed":0.75,"visibleDuration":10,"visibleStart":0}"#
+        let session = try JSONDecoder().decode(SongSession.self, from: Data(old.utf8))
+        XCTAssertNil(session.regions)
+        XCTAssertEqual(session.speed, 0.75)
+    }
+
+    func testRegionsRoundTrip() throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let store = SessionStore(directory: directory)
+        var session = SongSession(speed: 1, semitones: 0, cents: 0, algorithm: "B", highpassKnob: 0, lowpassKnob: 1,
+                                  selection: nil, loopEnabled: false, position: 0, visibleStart: 0, visibleDuration: 10)
+        session.regions = [NamedRegion(name: "Bridge lick", selection: Selection(61.5, 66.25))]
+        store.save(session, for: "regions")
+        XCTAssertEqual(store.load("regions")?.regions?.first?.name, "Bridge lick")
+    }
+}

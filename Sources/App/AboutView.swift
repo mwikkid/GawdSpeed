@@ -22,6 +22,10 @@ struct AboutView: View {
                   licenseFile: "MIT-signalsmith-stretch"),
         Component(name: "Signalsmith Linear 0.6.4", detail: "MIT · Signalsmith Audio",
                   licenseFile: "MIT-signalsmith-linear"),
+        Component(name: "FFmpeg 9.0.2 (bundled)", detail: "GPL-3.0-or-later as built · the FFmpeg developers",
+                  licenseFile: "GPL-3.0-or-later"),
+        Component(name: "LAME 3.100 (inside FFmpeg)", detail: "LGPL-2.0-or-later · the LAME developers",
+                  licenseFile: "LGPL-2.0-or-later-LAME"),
     ]
 
     @State private var shownLicense: String?

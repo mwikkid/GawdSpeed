@@ -99,6 +99,38 @@ final class PlayerViewModel {
         playback.onOutputChange = { [weak self] in
             MainActor.assumeIsolated { self?.outputDeviceChanged() }
         }
+        playback.signalsmithCheaper = signalsmithCheaper
+        if let uid = outputDeviceUID, let device = OutputDevices.device(withUID: uid) {
+            playback.setOutputDevice(device.id)
+        }
+    }
+
+    // MARK: Settings that rebuild playback
+
+    /// The chosen output device's UID; nil follows the system default (spec §5.7).
+    var outputDeviceUID: String? = UserDefaults.standard.string(forKey: "outputDeviceUID") {
+        didSet {
+            UserDefaults.standard.set(outputDeviceUID, forKey: "outputDeviceUID")
+            playback.setOutputDevice(outputDeviceUID.flatMap { OutputDevices.device(withUID: $0)?.id })
+            reloadKeepingPlace(rebuild: false)
+        }
+    }
+
+    /// Algorithm A's lighter preset (Settings ▸ Advanced, spec §4).
+    var signalsmithCheaper: Bool = UserDefaults.standard.bool(forKey: "signalsmithCheaper") {
+        didSet {
+            UserDefaults.standard.set(signalsmithCheaper, forKey: "signalsmithCheaper")
+            playback.signalsmithCheaper = signalsmithCheaper
+            reloadKeepingPlace(rebuild: true)
+        }
+    }
+
+    /// Rebuilds playback for the current song (new device rate or engine
+    /// options), keeping the place in the song and whether it was playing.
+    private func reloadKeepingPlace(rebuild: Bool) {
+        guard hasFile, let url = playback.source?.url else { return }
+        if !rebuild, playback.restartIfRateUnchanged() { return }
+        open(url, resumeAt: max(livePosition(), 0.001), play: isPlaying)
     }
 
     /// Spec §3 rule 5: sources are decoded at the device rate, so a new rate
@@ -158,6 +190,7 @@ final class PlayerViewModel {
                 duration = audio.duration
                 self.pyramid = pyramid
                 self.fingerprint = fingerprint
+                regions = []
                 selection = nil
                 loopEnabled = false
                 visibleStart = 0
@@ -167,6 +200,8 @@ final class PlayerViewModel {
                     cents = 0
                 }
                 applyAllToEngine()
+                undoManager?.removeAllActions()
+                settledState = nil
                 var pickedUp = false
                 if resumeAt == 0, let fingerprint, let session = sessions.load(fingerprint) {
                     restore(session)
@@ -218,6 +253,7 @@ final class PlayerViewModel {
         if playing, followMode == .page, isFollowing { pageFlipIfNeeded() }
         pollCount += 1
         if pollCount % 50 == 0 { saveSession() }
+        trackUndo()
     }
     @ObservationIgnored private var pollCount = 0
 
@@ -404,6 +440,90 @@ final class PlayerViewModel {
 
     var sourceAudio: SourceAudio? { playback.source }
 
+    // MARK: Help (spec §5.11)
+
+    var showingShortcuts = false
+    /// The first-run tip on screen, or nil.
+    var tipStep: Int? = UserDefaults.standard.bool(forKey: "tipsDone") ? nil : 0
+
+    // MARK: Undo (spec §5.11): loop/selection and control changes
+
+    /// Everything Undo can put back.
+    struct UndoSnapshot: Equatable {
+        var speed: Double
+        var semitones: Int
+        var cents: Double
+        var algorithm: Algorithm
+        var highpassKnob: Double
+        var lowpassKnob: Double
+        var selection: Selection?
+        var loopEnabled: Bool
+    }
+
+    /// The window's undo manager, handed over by the main view.
+    @ObservationIgnored weak var undoManager: UndoManager?
+    @ObservationIgnored private var settledState: UndoSnapshot?
+    @ObservationIgnored private var lastSeenState: UndoSnapshot?
+    @ObservationIgnored private var quietPolls = 0
+
+    private var undoSnapshot: UndoSnapshot {
+        UndoSnapshot(speed: speed, semitones: semitones, cents: cents, algorithm: algorithm,
+                     highpassKnob: highpassKnob, lowpassKnob: lowpassKnob,
+                     selection: selection, loopEnabled: loopEnabled)
+    }
+
+    /// Called ten times a second. A change becomes one undo step once things
+    /// have been still for half a second, so a whole knob turn or slider drag
+    /// undoes in one go.
+    private func trackUndo() {
+        let now = undoSnapshot
+        guard let settled = settledState else { settledState = now; lastSeenState = now; return }
+        if now != lastSeenState {
+            lastSeenState = now
+            quietPolls = 0
+            return
+        }
+        quietPolls += 1
+        if quietPolls >= 5, now != settled {
+            registerUndo(back: settled, from: now)
+            settledState = now
+        }
+    }
+
+    private func registerUndo(back previous: UndoSnapshot, from current: UndoSnapshot) {
+        guard let undoManager else { return }
+        undoManager.registerUndo(withTarget: self) { target in
+            MainActor.assumeIsolated {
+                target.apply(previous)
+                target.registerUndo(back: current, from: previous) // becomes the redo
+            }
+        }
+        undoManager.setActionName(Self.actionName(from: previous, to: current))
+    }
+
+    private func apply(_ snapshot: UndoSnapshot) {
+        speed = snapshot.speed
+        semitones = snapshot.semitones
+        cents = snapshot.cents
+        algorithm = snapshot.algorithm
+        highpassKnob = snapshot.highpassKnob
+        lowpassKnob = snapshot.lowpassKnob
+        setSelection(snapshot.selection, snap: false)
+        loopEnabled = snapshot.loopEnabled && selection != nil
+        settledState = undoSnapshot
+        lastSeenState = settledState
+    }
+
+    private static func actionName(from a: UndoSnapshot, to b: UndoSnapshot) -> String {
+        var changed: [String] = []
+        if a.speed != b.speed { changed.append("Speed") }
+        if a.semitones != b.semitones || a.cents != b.cents { changed.append("Transpose") }
+        if a.algorithm != b.algorithm { changed.append("Algorithm") }
+        if a.highpassKnob != b.highpassKnob || a.lowpassKnob != b.lowpassKnob { changed.append("Filter") }
+        if a.selection != b.selection || a.loopEnabled != b.loopEnabled { changed.append("Loop") }
+        return changed.count == 1 ? "\(changed[0]) Change" : "Changes"
+    }
+
     // MARK: Per-song memory (spec §5.9) and Open Recent
 
     private let sessions = SessionStore.standard
@@ -419,7 +539,7 @@ final class PlayerViewModel {
         SongSession(speed: speed, semitones: semitones, cents: cents, algorithm: algorithm.rawValue,
                     highpassKnob: highpassKnob, lowpassKnob: lowpassKnob, selection: selection,
                     loopEnabled: loopEnabled, position: livePosition(),
-                    visibleStart: visibleStart, visibleDuration: visibleDuration)
+                    visibleStart: visibleStart, visibleDuration: visibleDuration, regions: regions)
     }
 
     /// Saves the open song's settings. Called when switching songs, every few
@@ -445,7 +565,46 @@ final class PlayerViewModel {
         setSelection(session.selection, snap: false)
         loopEnabled = session.loopEnabled && selection != nil
         seek(to: session.position)
+        regions = session.regions ?? []
         lastSaved = session
+    }
+
+    // MARK: Named regions (spec §5.9)
+
+    var regions: [NamedRegion] = []
+    var showingRegions = false
+
+    /// Saves the highlighted section as a named region.
+    func addRegion() {
+        guard let selection else {
+            showStatus("Highlight a section first, then save it as a region")
+            return
+        }
+        let region = NamedRegion(name: "Region \(regions.count + 1)", selection: selection)
+        regions.append(region)
+        regions.sort { $0.selection.start < $1.selection.start }
+        showStatus("Saved \(region.name). Click its name to rename it")
+    }
+
+    /// Highlights a region, jumps there and shows it.
+    func goTo(_ region: NamedRegion) {
+        setSelection(region.selection, snap: false)
+        seek(to: region.selection.start)
+        if region.selection.start < visibleStart || region.selection.end > visibleStart + visibleDuration {
+            visibleDuration = min(duration, max(Self.minimumVisible, region.selection.length * 1.5))
+            setVisibleStart(region.selection.start - region.selection.length * 0.25)
+        }
+        showStatus(region.name)
+    }
+
+    func renameRegion(_ id: NamedRegion.ID, to name: String) {
+        guard let index = regions.firstIndex(where: { $0.id == id }) else { return }
+        let trimmed = name.trimmingCharacters(in: .whitespaces)
+        if !trimmed.isEmpty { regions[index].name = trimmed }
+    }
+
+    func deleteRegion(_ id: NamedRegion.ID) {
+        regions.removeAll { $0.id == id }
     }
 
     // MARK: Export (spec §5.8)
