@@ -17,6 +17,21 @@ struct TransportBar: View {
 
     var body: some View {
         HStack(spacing: 14) {
+            HStack(spacing: 14) { transportControls }
+                .disabled(!player.hasFile)
+
+            Spacer()
+
+            // Status line (spec §5.11): brief, non-blocking messages.
+            Text(player.statusMessage ?? "")
+                .font(.system(size: 12))
+                .foregroundStyle(Theme.secondaryText)
+                .lineLimit(1)
+                .animation(.easeInOut(duration: 0.2), value: player.statusMessage)
+        }
+    }
+
+    @ViewBuilder private var transportControls: some View {
             transportButton("backward.end.fill", HelpText.backToStart, "Back to start") { player.backToStart() }
             transportButton("gobackward.5", HelpText.rewind, "Skip back 5 seconds") { player.skip(by: -5) }
             Button { player.togglePlay() } label: {
@@ -26,7 +41,7 @@ struct TransportBar: View {
             }
             .buttonStyle(.borderless)
             .foregroundStyle(Theme.primaryText)
-            .help(HelpText.playPause)
+            .tip(HelpText.playPause)
             .accessibilityLabel(player.isPlaying ? "Pause" : "Play")
             transportButton("goforward.5", HelpText.forward, "Skip ahead 5 seconds") { player.skip(by: 5) }
 
@@ -35,12 +50,8 @@ struct TransportBar: View {
                     .font(.system(size: 15, weight: .medium).monospacedDigit())
                     .foregroundStyle(Theme.primaryText)
             }
-            .help(HelpText.time)
+            .tip(HelpText.time)
             .accessibilityLabel("Position")
-
-            Spacer()
-        }
-        .disabled(!player.hasFile)
     }
 
     private func transportButton(_ symbol: String, _ help: String, _ label: String,
@@ -50,7 +61,7 @@ struct TransportBar: View {
         }
         .buttonStyle(.borderless)
         .foregroundStyle(Theme.secondaryText)
-        .help(help)
+        .tip(help)
         .accessibilityLabel(label)
     }
 }
@@ -76,7 +87,7 @@ struct SpeedControl: View {
             .labelsHidden()
             .tint(Theme.accent)
             .controlSize(.large)
-            .help(HelpText.speedSlider)
+            .tip(HelpText.speedSlider)
             .accessibilityValue("\(Int((player.speed * 100).rounded())) percent")
             .contextMenu { Button("Reset to Default") { player.speed = 1 } }
 
@@ -110,7 +121,7 @@ struct SpeedControl: View {
         }
         .buttonStyle(.plain)
         .foregroundStyle(selected ? Theme.accent : Theme.primaryText)
-        .help(help)
+        .tip(help)
         .accessibilityLabel("\(Int(value * 100)) percent speed")
     }
 }
@@ -119,65 +130,92 @@ struct SecondaryControls: View {
     @Bindable var player: PlayerViewModel
 
     var body: some View {
-        HStack(alignment: .center, spacing: 14) {
-            Text("transpose")
-                .font(.system(size: 12))
-                .foregroundStyle(Theme.secondaryText)
-
-            HStack(spacing: 4) {
+        HStack(alignment: .center, spacing: 0) {
+            // Transpose: whole semitones.
+            HStack(spacing: 6) {
+                Text("transpose")
+                    .font(.system(size: 12))
+                    .foregroundStyle(Theme.secondaryText)
+                    .fixedSize()
                 smallButton("minus", "Transpose down a semitone") { player.nudgeSemitones(by: -1) }
                 Text("\(player.semitones > 0 ? "+" : "")\(player.semitones) st")
                     .font(.system(size: 12).monospacedDigit())
                     .foregroundStyle(player.semitones == 0 ? Theme.secondaryText : Theme.primaryText)
-                    .frame(width: 44)
+                    .frame(width: 40)
                 smallButton("plus", "Transpose up a semitone") { player.nudgeSemitones(by: 1) }
             }
-            .help(HelpText.transpose)
+            .tip(HelpText.transpose)
             .accessibilityElement(children: .combine)
             .accessibilityLabel("Transpose")
             .accessibilityValue("\(player.semitones) semitones")
             .accessibilityAdjustableAction { player.nudgeSemitones(by: $0 == .increment ? 1 : -1) }
 
+            Spacer().frame(width: 26)
+
+            // Tune: cents, for recordings that aren't at A440.
             HStack(spacing: 6) {
-                Text("¢").font(.system(size: 12)).foregroundStyle(Theme.secondaryText)
+                Text("tune")
+                    .font(.system(size: 12))
+                    .foregroundStyle(Theme.secondaryText)
+                    .fixedSize()
                 Slider(value: $player.cents, in: -50...50, step: 1)
                     .controlSize(.mini)
                     .frame(width: 90)
                     .tint(Theme.secondaryText)
                     .contextMenu { Button("Reset to Default") { player.cents = 0 } }
-                Text("\(player.cents > 0 ? "+" : "")\(Int(player.cents))")
-                    .font(.system(size: 11).monospacedDigit())
+                Text("\(player.cents > 0 ? "+" : "")\(Int(player.cents)) ¢")
+                    .font(.system(size: 12).monospacedDigit())
                     .foregroundStyle(player.cents == 0 ? Theme.secondaryText : Theme.primaryText)
-                    .frame(width: 28, alignment: .leading)
+                    .frame(width: 40, alignment: .leading)
             }
-            .help(HelpText.cents)
+            .tip(HelpText.tune)
             .accessibilityElement(children: .ignore)
-            .accessibilityLabel("Cents")
+            .accessibilityLabel("Tune")
             .accessibilityValue("\(Int(player.cents)) cents")
             .accessibilityAdjustableAction { player.nudgeCents(by: $0 == .increment ? 5 : -5) }
 
+            // Lights up only when the key is shifted; click to undo.
             Button { player.resetTranspose() } label: {
-                Circle()
-                    .fill(player.isTransposed ? Theme.activeDot : Color.clear)
-                    .overlay(Circle().stroke(player.isTransposed ? Theme.activeDot : Theme.panelEdge, lineWidth: 1))
-                    .frame(width: 9, height: 9)
-                    .padding(4)
+                HStack(spacing: 5) {
+                    Circle().fill(Theme.activeDot).frame(width: 8, height: 8)
+                    Text("original key").font(.system(size: 11))
+                }
+                .padding(.horizontal, 8)
+                .padding(.vertical, 4)
+                .background(Capsule().fill(Theme.activeDot.opacity(0.15)))
             }
             .buttonStyle(.plain)
+            .foregroundStyle(Theme.primaryText)
+            .opacity(player.isTransposed ? 1 : 0)
             .disabled(!player.isTransposed)
-            .help(HelpText.transposeDot)
-            .accessibilityLabel(player.isTransposed ? "Key is shifted. Reset transpose" : "Original key")
+            .tip(HelpText.resetKey)
+            .accessibilityLabel("Reset to the original key")
+            .accessibilityHidden(!player.isTransposed)
 
-            Spacer()
+            Spacer(minLength: 12)
 
-            Knob(label: "HIGH-PASS", value: $player.highpassKnob, defaultValue: FilterRange.highpassDefault,
-                 valueText: player.highpassKnob == FilterRange.highpassDefault
-                    ? "off" : hzText(FilterRange.highpassHz(player.highpassKnob)),
-                 help: HelpText.highpass)
-            Knob(label: "LOW-PASS", value: $player.lowpassKnob, defaultValue: FilterRange.lowpassDefault,
-                 valueText: player.lowpassKnob == FilterRange.lowpassDefault
-                    ? "off" : hzText(FilterRange.lowpassHz(player.lowpassKnob)),
-                 help: HelpText.lowpass)
+            // Maker's mark (DECISIONS 2026-10-06). Not covered by the GPL;
+            // see THIRD_PARTY_NOTICES.md.
+            Image("iiiAudioWordmark")
+                .renderingMode(.template)
+                .resizable()
+                .aspectRatio(contentMode: .fit)
+                .frame(height: 13)
+                .foregroundStyle(Theme.secondaryText.opacity(0.7))
+                .accessibilityLabel("iii.audio")
+
+            Spacer(minLength: 12)
+
+            HStack(spacing: 18) {
+                Knob(label: "HIGH-PASS", value: $player.highpassKnob, defaultValue: FilterRange.highpassDefault,
+                     valueText: player.highpassKnob == FilterRange.highpassDefault
+                        ? "off" : hzText(FilterRange.highpassHz(player.highpassKnob)),
+                     help: HelpText.highpass)
+                Knob(label: "LOW-PASS", value: $player.lowpassKnob, defaultValue: FilterRange.lowpassDefault,
+                     valueText: player.lowpassKnob == FilterRange.lowpassDefault
+                        ? "off" : hzText(FilterRange.lowpassHz(player.lowpassKnob)),
+                     help: HelpText.lowpass)
+            }
         }
     }
 

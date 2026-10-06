@@ -3,6 +3,21 @@
 Changes to, and settlements of, the spec (`docs/SPEC.md`), newest first. Each entry gives
 the date, who decided, and why.
 
+## 2026-10-06 (after Earl's first try of Phase 1)
+
+- **"transpose" and "tune" are two separate, labelled groups** (Earl: "I didn't realize
+  you had both a tune and a transpose"). Transpose is semitone − / + buttons. Tune is a
+  cents slider. A "● original key" chip appears only while either is shifted, and
+  clicking it resets both.
+- **Tooltips are drawn inside the interface** (`Sources/UI/Tooltip.swift`), replacing
+  SwiftUI's `.help()`, which positions its tooltips from the unscaled layout.
+- **Only the top strip drags the window.** A draggable background was moving the
+  window when Earl turned the filter knobs.
+- **Logo moved into the transpose/tune/filters row; status messages moved into the
+  transport row; the bottom strip is gone.** The design size is now 900 × 490 (it was the
+  spec's 900 × 520).
+- **Import from a website** is spec Phase 4 and not built yet. Earl asked where it was.
+
 ## 2026-10-06
 
 - **Interface scales with the window, as in Hysterical** (Earl). Drag the window corner

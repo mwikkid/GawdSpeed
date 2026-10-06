@@ -28,7 +28,7 @@ struct WaveformView: View {
                     .onChanged { onSeek(seconds(atX: $0.location.x, width: size.width)) }
             )
         }
-        .help(HelpText.waveform)
+        .tip(HelpText.waveform)
         .accessibilityElement()
         .accessibilityLabel("Waveform")
         .accessibilityHint(HelpText.waveform)

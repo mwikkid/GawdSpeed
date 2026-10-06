@@ -8,7 +8,9 @@ import SwiftUI
 
 enum Theme {
     /// The interface is laid out at this size and scaled to fit the window.
-    static let designSize = CGSize(width: 900, height: 520)
+    /// 900 × 490: the spec's 900 × 520 less the bottom strip Earl asked to
+    /// crop once the logo moved into the controls row (DECISIONS).
+    static let designSize = CGSize(width: 900, height: 490)
 
     static let background = Color(red: 0.071, green: 0.078, blue: 0.094)
     static let panel = Color(red: 0.106, green: 0.118, blue: 0.141)

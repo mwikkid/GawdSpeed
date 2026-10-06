@@ -63,7 +63,7 @@ struct Knob: View {
                 .font(.system(size: 11).monospacedDigit())
                 .foregroundStyle(value == defaultValue ? Theme.secondaryText : Theme.primaryText)
         }
-        .help(help)
+        .tip(help)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(label)
         .accessibilityValue(valueText)

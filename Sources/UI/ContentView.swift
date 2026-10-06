@@ -9,6 +9,7 @@ import SwiftUI
 /// everything bigger together (DECISIONS 2026-10-06, as in Hysterical).
 struct ContentView: View {
     @Bindable var player: PlayerViewModel
+    @State private var tooltips = TooltipCenter()
 
     var body: some View {
         GeometryReader { geometry in
@@ -16,6 +17,9 @@ struct ContentView: View {
                             geometry.size.height / Theme.designSize.height)
             MainLayout(player: player)
                 .frame(width: Theme.designSize.width, height: Theme.designSize.height)
+                .overlay(alignment: .topLeading) { TooltipLayer(bounds: Theme.designSize) }
+                .coordinateSpace(name: TooltipCenter.space)
+                .environment(tooltips)
                 .scaleEffect(scale, anchor: .topLeading)
                 .frame(width: geometry.size.width, height: geometry.size.height, alignment: .topLeading)
         }
@@ -31,7 +35,7 @@ struct ContentView: View {
 }
 
 /// Locks the window to the design's aspect ratio, with the design size as
-/// the minimum (spec §5: min 900×520; §5.11: nothing under 11 pt). Runs when
+/// the minimum (§5.11: nothing under 11 pt). Runs when
 /// the view joins its window; before that there is no window to configure.
 private struct WindowConfigurator: NSViewRepresentable {
     final class Probe: NSView {
@@ -41,7 +45,9 @@ private struct WindowConfigurator: NSViewRepresentable {
             window.contentAspectRatio = Theme.designSize
             window.contentMinSize = Theme.designSize
             window.backgroundColor = NSColor(Theme.background)
-            window.isMovableByWindowBackground = true
+            // Only the top strip drags the window. A draggable background
+            // stole drags meant for the knobs and the waveform.
+            window.isMovableByWindowBackground = false
             // The aspect lock only governs later resizes; bring the current
             // content area to the design's proportions now.
             let width = max(window.contentLayoutRect.width, Theme.designSize.width)
@@ -83,10 +89,6 @@ private struct MainLayout: View {
             .padding(.top, 8)
 
             Spacer(minLength: 0)
-            Footer(player: player)
-                .frame(height: 24)
-                .padding(.horizontal, 18)
-                .padding(.bottom, 6)
         }
     }
 }
@@ -99,7 +101,7 @@ private struct TopBar: View {
             Button { player.showOpenPanel() } label: {
                 Label("Open…", systemImage: "folder").font(.system(size: 13))
             }
-            .help(HelpText.open)
+            .tip(HelpText.open)
 
             if !player.title.isEmpty {
                 VStack(alignment: .leading, spacing: 0) {
@@ -122,7 +124,7 @@ private struct TopBar: View {
             .pickerStyle(.segmented)
             .labelsHidden()
             .frame(width: 90)
-            .help(HelpText.algorithm)
+            .tip(HelpText.algorithm)
             .accessibilityLabel("Algorithm")
         }
     }
@@ -179,7 +181,7 @@ private struct DropZone: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .help(HelpText.open)
+        .tip(HelpText.open)
         .accessibilityLabel("Open a song")
     }
 }
@@ -212,28 +214,5 @@ private struct LoadErrorView: View {
             .frame(maxWidth: 520)
         }
         .padding()
-    }
-}
-
-private struct Footer: View {
-    let player: PlayerViewModel
-
-    var body: some View {
-        HStack {
-            Text(player.statusMessage ?? "")
-                .font(.system(size: 11))
-                .foregroundStyle(Theme.secondaryText)
-                .animation(.easeInOut(duration: 0.2), value: player.statusMessage)
-            Spacer()
-            // Maker's mark (DECISIONS 2026-10-06). Not covered by the GPL;
-            // see THIRD_PARTY_NOTICES.md.
-            Image("iiiAudioWordmark")
-                .renderingMode(.template)
-                .resizable()
-                .aspectRatio(contentMode: .fit)
-                .frame(height: 12)
-                .foregroundStyle(Theme.secondaryText.opacity(0.8))
-                .accessibilityLabel("iii.audio")
-        }
     }
 }
