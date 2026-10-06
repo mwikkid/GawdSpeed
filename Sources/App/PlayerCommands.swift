@@ -21,6 +21,8 @@ struct PlayerCommands: Commands {
         CommandGroup(replacing: .newItem) {
             Button("Open…") { player.showOpenPanel() }
                 .keyboardShortcut("o")
+            Button("Import from URL…") { player.requestLinkField() }
+                .keyboardShortcut("u")
             Menu("Open Recent") {
                 ForEach(player.recentFiles, id: \.self) { url in
                     Button(url.deletingPathExtension().lastPathComponent) { player.open(url) }

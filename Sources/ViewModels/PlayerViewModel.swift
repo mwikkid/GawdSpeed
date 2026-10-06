@@ -607,6 +607,110 @@ final class PlayerViewModel {
         regions.removeAll { $0.id == id }
     }
 
+    // MARK: Import from a website (spec §8.2, §5.11 "Link field")
+
+    var linkText = ""
+    /// Download progress 0...1 while importing; nil when idle.
+    private(set) var importProgress: Double?
+    var showingYtDlpSetup = false
+    var showingRightsNotice = false
+    /// A supported link found on the clipboard, offered as "Use copied link?".
+    private(set) var offeredLink: URL?
+    /// Bumped to move keyboard focus to the link field (File ▸ Import from URL…).
+    private(set) var focusLinkField = 0
+    @ObservationIgnored private var importTask: Task<Void, Never>?
+    @ObservationIgnored private var lastOfferedLink: URL?
+    @ObservationIgnored private var pendingImport: URL?
+
+    var ytdlpPath: String? = UserDefaults.standard.string(forKey: "ytdlpPath") {
+        didSet { UserDefaults.standard.set(ytdlpPath, forKey: "ytdlpPath") }
+    }
+    var downloadFolder: URL = UserDefaults.standard.url(forKey: "downloadFolder") ?? URLImporter.defaultDownloadFolder {
+        didSet { UserDefaults.standard.set(downloadFolder, forKey: "downloadFolder") }
+    }
+    var ytdlpTool: URL? { URLImporter.executable(preferred: ytdlpPath) }
+    var isImporting: Bool { importProgress != nil }
+
+    func requestLinkField() { focusLinkField += 1 }
+
+    /// Starts an import from the link field (Return or the ↓ button).
+    func importLink() {
+        guard let link = URLImporter.link(from: linkText) else {
+            showStatus("That doesn't look like a web link. Copy the address from your browser and paste it here")
+            return
+        }
+        guard ytdlpTool != nil else {
+            pendingImport = link
+            showingYtDlpSetup = true
+            return
+        }
+        guard UserDefaults.standard.bool(forKey: "rightsNoticeShown") else {
+            pendingImport = link
+            showingRightsNotice = true
+            return
+        }
+        startImport(link)
+    }
+
+    /// After the one-time notice or the yt-dlp setup, carry on with the link.
+    func continuePendingImport() {
+        UserDefaults.standard.set(true, forKey: "rightsNoticeShown")
+        guard let link = pendingImport else { return }
+        pendingImport = nil
+        if ytdlpTool == nil { return }
+        startImport(link)
+    }
+
+    private func startImport(_ link: URL) {
+        guard let tool = ytdlpTool else { return }
+        offeredLink = nil
+        importProgress = 0
+        showStatus("Getting audio from \(link.host ?? "the link")…")
+        let folder = downloadFolder
+        let ffmpeg = FFmpegRunner.executable
+        importTask = Task {
+            do {
+                let file = try await URLImporter.download(link, into: folder, tool: tool, ffmpeg: ffmpeg) { p in
+                    Task { @MainActor [weak self] in if self?.importProgress != nil { self?.importProgress = p } }
+                }
+                importProgress = nil
+                linkText = ""
+                open(file)
+            } catch is CancellationError {
+                importProgress = nil
+                showStatus("Download cancelled")
+            } catch let error as URLImporter.ImportError {
+                importProgress = nil
+                loadState = .failed(message: error.errorDescription ?? "", details: error.details)
+            } catch {
+                importProgress = nil
+                loadState = .failed(message: URLImporter.ImportError.failed(details: "").errorDescription ?? "",
+                                    details: error.localizedDescription)
+            }
+        }
+    }
+
+    func cancelImport() { importTask?.cancel() }
+
+    /// When the window comes forward: offer a copied media link, once per link
+    /// (never downloads by itself).
+    func checkClipboard() {
+        guard !isImporting, let text = NSPasteboard.general.string(forType: .string),
+              let link = URLImporter.link(from: text), URLImporter.isLikelyMediaLink(link),
+              link != lastOfferedLink else { return }
+        lastOfferedLink = link
+        offeredLink = link
+    }
+
+    func useOfferedLink() {
+        guard let link = offeredLink else { return }
+        linkText = link.absoluteString
+        offeredLink = nil
+        importLink()
+    }
+
+    func dismissOfferedLink() { offeredLink = nil }
+
     // MARK: Export (spec §5.8)
 
     struct ExportRequest: Identifiable {

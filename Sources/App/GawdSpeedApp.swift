@@ -58,6 +58,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 struct SettingsView: View {
     @Bindable var player: PlayerViewModel
     @State private var devices: [OutputDevice] = []
+    @State private var ytdlpStatus = ""
 
     var body: some View {
         Form {
@@ -79,6 +80,35 @@ struct SettingsView: View {
                 ForEach(devices) { Text($0.name).tag(Optional($0.uid)) }
             }
             .help("Which speakers, headphones or interface GawdSpeed plays through")
+            Section("Import from websites") {
+                LabeledContent("yt-dlp") {
+                    Text(player.ytdlpTool?.path ?? "not set up yet")
+                        .font(.system(size: 11)).foregroundStyle(.secondary).lineLimit(1).truncationMode(.middle)
+                }
+                HStack {
+                    Button("Update yt-dlp") {
+                        guard let tool = player.ytdlpTool else { return }
+                        ytdlpStatus = "Updating…"
+                        Task {
+                            ytdlpStatus = (try? await URLImporter.update(tool)).map { "Up to date: \($0)" }
+                                ?? "Couldn't update. If it came from Homebrew, run: brew upgrade yt-dlp"
+                        }
+                    }
+                    .disabled(player.ytdlpTool == nil)
+                    Button("Set Up…") { player.showingYtDlpSetup = true }
+                    Text(ytdlpStatus).font(.system(size: 11)).foregroundStyle(.secondary)
+                }
+                LabeledContent("Save downloads in") {
+                    Button(player.downloadFolder.lastPathComponent) {
+                        let panel = NSOpenPanel()
+                        panel.canChooseDirectories = true
+                        panel.canChooseFiles = false
+                        panel.canCreateDirectories = true
+                        panel.directoryURL = player.downloadFolder
+                        if panel.runModal() == .OK, let url = panel.url { player.downloadFolder = url }
+                    }
+                }
+            }
             Section("Advanced") {
                 Toggle("Algorithm A: lighter preset (uses less processing)", isOn: $player.signalsmithCheaper)
                     .help("Signalsmith Stretch's \"cheaper\" preset. Try it on an older Mac if playback stutters")

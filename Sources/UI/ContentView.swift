@@ -30,6 +30,18 @@ struct ContentView: View {
         .onAppear { player.undoManager = undoManager }
         .onChange(of: undoManager) { _, new in player.undoManager = new }
         .background(WindowConfigurator())
+        .sheet(isPresented: $player.showingYtDlpSetup) {
+            YtDlpSetupSheet(player: player).preferredColorScheme(.dark)
+        }
+        .alert("Only download audio you have the right to use", isPresented: $player.showingRightsNotice) {
+            Button("OK") { player.continuePendingImport() }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("GawdSpeed saves what you download to Music ▸ GawdSpeed ▸ Downloads. Use it for your own practice; respect the rights of the people who made it.")
+        }
+        .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
+            player.checkClipboard()
+        }
         .sheet(isPresented: $player.showingShortcuts) {
             ShortcutSheet().preferredColorScheme(.dark)
         }
@@ -113,12 +125,15 @@ private struct TopBar: View {
             }
             .tip(HelpText.open)
 
+            LinkField(player: player)
+
             if !player.title.isEmpty {
                 VStack(alignment: .leading, spacing: 0) {
                     Text(player.title)
                         .font(.system(size: 14, weight: .semibold))
                         .foregroundStyle(Theme.primaryText)
                         .lineLimit(1)
+                        .truncationMode(.tail)
                     if let artist = player.artist {
                         Text(artist).font(.system(size: 11)).foregroundStyle(Theme.secondaryText).lineLimit(1)
                     }

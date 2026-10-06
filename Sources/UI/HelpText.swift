@@ -6,6 +6,7 @@
 
 enum HelpText {
     static let open = "Open an audio or video file: WAV, MP3, FLAC, AIFF, M4A, MP4, MOV and more (⌘O). You can also drag a file onto the window."
+    static let link = "Paste a link from YouTube, SoundCloud, Bandcamp, Vimeo and more, then press Return to grab the audio"
     static let playPause = "Play or pause (Space)"
     static let backToStart = "Jump back to the start of the song (Return)"
     static let rewind = "Skip back 5 seconds (⇧←)"
