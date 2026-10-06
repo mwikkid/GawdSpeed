@@ -27,7 +27,10 @@ struct ContentView: View {
         }
         .ignoresSafeArea()
         .background(Theme.background)
-        .onAppear { player.undoManager = undoManager }
+        .onAppear {
+            player.undoManager = undoManager
+            installEscapeHandler()
+        }
         .onChange(of: undoManager) { _, new in player.undoManager = new }
         .background(WindowConfigurator())
         .sheet(isPresented: $player.showingYtDlpSetup) {
@@ -53,6 +56,25 @@ struct ContentView: View {
             guard let url = urls.first else { return false }
             player.open(url)
             return true
+        }
+    }
+}
+
+extension ContentView {
+    /// Esc clears the highlighted section (spec §5.6). Handled here rather
+    /// than only as a menu shortcut: the menu's Esc never reached the app
+    /// (Earl couldn't get rid of a highlight; checked 2026-10-06). Steps
+    /// aside while typing or when a sheet is open.
+    func installEscapeHandler() {
+        NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [player] event in
+            guard event.keyCode == 53, // Esc
+                  event.modifierFlags.intersection(.deviceIndependentFlagsMask).isEmpty,
+                  !player.isEditingText, player.selection != nil,
+                  let window = event.window, window.attachedSheet == nil,
+                  window.identifier?.rawValue.hasPrefix("main") ?? true
+            else { return event }
+            player.clearSelection()
+            return nil
         }
     }
 }

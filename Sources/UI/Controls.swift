@@ -86,6 +86,16 @@ struct TransportBar: View {
                 player.setSelection(Selection(min(player.selection?.start ?? 0, t - Selection.minimumLength), t))
             }
             .tip(HelpText.loopOut)
+
+            Button { player.clearSelection() } label: {
+                Image(systemName: "xmark.circle.fill").font(.system(size: 14))
+            }
+            .buttonStyle(.borderless)
+            .foregroundStyle(Theme.secondaryText)
+            .opacity(player.selection == nil ? 0 : 1)
+            .disabled(player.selection == nil)
+            .tip(HelpText.clearSelection)
+            .accessibilityLabel("Clear the highlighted section")
     }
 
     private func transportButton(_ symbol: String, _ help: String, _ label: String,

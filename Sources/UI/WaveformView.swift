@@ -255,6 +255,9 @@ struct DetailWaveform: View {
             .onEnded { drag in
                 switch dragMode {
                 case .undecided:
+                    // A click outside the highlighted section clears it (Earl:
+                    // highlights were too hard to get rid of), then jumps there.
+                    if player.selection != nil { player.clearSelection() }
                     player.seek(to: time(atX: drag.location.x, width: width))
                 case .move(_, _) where abs(drag.translation.width) < 3:
                     player.seek(to: time(atX: drag.location.x, width: width))
