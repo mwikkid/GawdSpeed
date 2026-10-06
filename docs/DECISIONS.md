@@ -1,0 +1,30 @@
+# Decisions
+
+Changes to, and settlements of, the spec (`docs/SPEC.md`), newest first. Each entry gives
+the date, who decided, and why.
+
+## 2026-10-06
+
+- **Interface scales with the window, as in Hysterical** (Earl). Drag the window corner
+  and the whole interface grows or shrinks together, including controls, text and the
+  logo, so it can be read from across the room with an instrument in hand. It's laid
+  out at a design size (900×520) and drawn through one scale factor. Phase 1.
+- **iii.audio wordmark in a corner of the window** (Earl). The wordmark is the one from
+  Hysterical (`Assets/LogoWordmark.png`), small and out of the way. Its license (Claude,
+  the conservative default): the logo is **not** covered by the GPL. It's marked
+  "all rights reserved" in `THIRD_PARTY_NOTICES.md`, so forks may use the code but not the
+  branding. This can be loosened later; a GPL grant can't be taken back.
+- **Default algorithm is B (Rubber Band)** (Claude, from FINDINGS F1). It measured
+  pitch-exact everywhere, while A drifts when transposing and below 40% speed. The spec
+  said "default A, revisit after listening tests"; this is that revisit, based on
+  measurement. Earl's listening can flip it back.
+- **The audio chain lives in C++, not Swift** (Claude). This covers the parameter
+  queue, both stretchers, crossfades, loop wrap and filters. It's internal and changes
+  nothing visible. Reasons: the audio thread must never allocate or lock (spec §3 rule
+  3); Swift's built-in atomics need macOS 15 and we target 14; and export reuses the exact
+  same code. swift-atomics (Apache-2.0) is therefore not needed. §4's `TimeStretcher`
+  is a C++ interface (`Bridge/Stretcher.hpp`), and the biquads will be C++.
+- **Bundle ID `audio.iii.GawdSpeed`** (Earl). It ships under iii.audio. The copyright
+  stays personal.
+- **Rubber Band v4.0.0** instead of v3 (Claude, Earl agreed). Same R3 engine and API,
+  plus bug fixes.

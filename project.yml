@@ -44,6 +44,14 @@ targets:
     platform: macOS
     sources:
       - path: Bridge
+        excludes: ["include", "*.hpp"]
+      - path: Bridge/Stretcher.hpp
+        buildPhase: none
+      # The C API Swift imports. Listed but not copied into the build products:
+      # a copied module.modulemap is a second definition of the GawdDSP module,
+      # which Xcode 16 rejects ("redefinition of module 'GawdDSP'").
+      - path: Bridge/include
+        buildPhase: none
       - path: ThirdParty/rubberband/single/RubberBandSingle.cpp
         compilerFlags: ["-w"]
     settings:
