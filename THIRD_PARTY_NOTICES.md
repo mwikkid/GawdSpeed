@@ -46,6 +46,16 @@ folder there must have an entry here headed `ThirdParty/<name>`.
 
 ---
 
+## iii.audio name and logo: `Sources/Resources/Assets.xcassets/iiiAudioWordmark.imageset`
+
+- **Copyright:** (C) 2026 Earl Scioneaux, III. All rights reserved.
+- **License:** **not** covered by the GPL. The wordmark is the maker's mark of
+  iii.audio. You may build and run GawdSpeed from source with it in place.
+  If you distribute a modified version, remove or replace it.
+- **Ships in app:** yes (a small mark in the window footer and the About window)
+
+---
+
 ## Build-only tools (not shipped in the app)
 
 ### XcodeGen

@@ -3,8 +3,9 @@
 A practice and transcription player for macOS. Load a song, slow it down
 without changing its pitch, loop the hard part, and work it out by ear.
 
-> **Status:** early development (Phase 0: project skeleton and both
-> time-stretch engines under test). Not ready to use yet.
+> **Status:** early development. Phase 1 (the core player) works:
+> open a file, slow it down, transpose, filter, and A/B the two algorithms.
+> Loops, export and the zoomable waveform come next.
 
 ## Features (planned)
 
@@ -14,6 +15,20 @@ without changing its pitch, loop the hard part, and work it out by ear.
   **B** = [Rubber Band Library](https://breakfastquay.com/rubberband/) (R3 engine)
 - Waveform with loop regions, high-pass and low-pass filters
 - Export the slowed-down audio, either the whole song or just a selection
+
+## CPU cost
+
+Measured offline by `PerformanceTests`: 30 s of stereo 48 kHz audio, three
+interleaved runs, on an Apple M5 Max (2026-10-06). One machine, so treat these
+as orientation rather than a benchmark.
+
+| Path | CPU, % of one core |
+|---|---|
+| 100% speed, no transpose (bypass, untouched audio) | 0.01 |
+| Algorithm A (Signalsmith Stretch) at 50% | 0.42 |
+| Algorithm B (Rubber Band R3) at 50% | 2.86 |
+
+Algorithm B costs about 7× as much as A, and both are far below what real-time playback needs.
 
 ## Building
 
