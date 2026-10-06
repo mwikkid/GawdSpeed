@@ -3,6 +3,21 @@
 Changes to, and settlements of, the spec (`docs/SPEC.md`), newest first. Each entry gives
 the date, who decided, and why.
 
+## 2026-10-06 (Phase 2)
+
+- **Saved positions are seconds of source time, not file frames** (Claude). The spec's
+  §3 rule 2 says "source-file frames". The audio in memory is resampled to the output
+  device's rate, so a frame count would change meaning when the device changes. Seconds
+  of source time keep the rule's intent: never stretched time.
+- **Per-song memory and the peak cache are keyed by a content fingerprint**
+  (`FileFingerprint`: SHA-256 of the file's size plus its first and last megabyte), not
+  a hash of the whole file. It's instant on large files, survives renames, and changes
+  if the audio is edited.
+- **Export doesn't copy title/artist tags yet** (spec §5.10). AVAudioFile can't write
+  them; this waits for Phase 3, alongside FLAC and MP3 export.
+- **Single-key shortcuts (Space, I, O, L, arrows, −, =, [, ]) switch off while a text
+  field or the Export sheet has the keyboard**, so typing a loop time doesn't trigger them.
+
 ## 2026-10-06 (after Earl's first try of Phase 1)
 
 - **"transpose" and "tune" are two separate, labelled groups** (Earl: "I didn't realize

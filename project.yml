@@ -97,7 +97,8 @@ targets:
       # App code with no UI, compiled into the tests directly (no host app).
       - path: Sources/Audio/AudioLoader.swift
       - path: Sources/Audio/ExportRenderer.swift
-      - path: Sources/Analysis/WaveformAnalyzer.swift
+      - path: Sources/Analysis
+      - path: Sources/Persistence
     dependencies:
       - target: GawdDSP
       - sdk: Accelerate.framework

@@ -26,6 +26,10 @@ struct ContentView: View {
         .ignoresSafeArea()
         .background(Theme.background)
         .background(WindowConfigurator())
+        .sheet(item: $player.exportRequest) { request in
+            ExportSheet(player: player, request: request)
+                .preferredColorScheme(.dark)
+        }
         .dropDestination(for: URL.self) { urls, _ in
             guard let url = urls.first else { return false }
             player.open(url)
@@ -147,10 +151,13 @@ private struct WaveformArea: View {
             case .failed(let message, let details):
                 LoadErrorView(message: message, details: details) { player.showOpenPanel() }
             case .loaded:
-                WaveformView(peaks: player.peaks, duration: player.duration,
-                             position: player.livePosition, onSeek: player.seek(to:))
-                    .padding(.vertical, 12)
-                    .padding(.horizontal, 10)
+                VStack(spacing: 6) {
+                    OverviewStrip(player: player)
+                        .frame(height: 40)
+                    DetailWaveform(player: player)
+                }
+                .padding(.vertical, 8)
+                .padding(.horizontal, 10)
             }
         }
     }

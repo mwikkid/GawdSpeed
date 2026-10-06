@@ -2,7 +2,7 @@
 // Copyright (C) 2026 Earl Scioneaux, III
 //
 // A rotary knob (spec §5.4): drag up/down (⇧ for fine), scroll wheel,
-// double-click or right-click to reset, arrow keys when focused.
+// double-click or right-click to reset; VoiceOver can adjust it.
 
 import AppKit
 import SwiftUI
@@ -53,7 +53,10 @@ struct Knob: View {
                     .onEnded { _ in dragStart = nil }
             )
             .simultaneousGesture(TapGesture(count: 2).onEnded { value = defaultValue })
-            .onScrollWheel { delta in value = clamp(value + delta / 200) }
+            .onScrollWheel { event, _ in
+                let delta = event.hasPreciseScrollingDeltas ? event.scrollingDeltaY / 4 : event.scrollingDeltaY * 2
+                value = clamp(value + Double(delta) / 200)
+            }
             .contextMenu { Button("Reset to Default") { value = defaultValue } }
 
             Text(label)
@@ -74,36 +77,4 @@ struct Knob: View {
     }
 
     private func clamp(_ v: Double) -> Double { min(max(v, 0), 1) }
-}
-
-// MARK: - Scroll wheel
-
-private struct ScrollWheelCatcher: NSViewRepresentable {
-    let onScroll: (Double) -> Void
-
-    final class View: NSView {
-        var onScroll: ((Double) -> Void)?
-        override func scrollWheel(with event: NSEvent) {
-            let delta = event.hasPreciseScrollingDeltas ? event.scrollingDeltaY / 4 : event.scrollingDeltaY * 2
-            onScroll?(Double(delta))
-        }
-        // Let clicks and drags fall through to the SwiftUI gestures.
-        override func hitTest(_ point: NSPoint) -> NSView? {
-            NSApp.currentEvent?.type == .scrollWheel ? super.hitTest(point) : nil
-        }
-    }
-
-    func makeNSView(context: Context) -> View {
-        let view = View()
-        view.onScroll = onScroll
-        return view
-    }
-
-    func updateNSView(_ view: View, context: Context) { view.onScroll = onScroll }
-}
-
-extension View {
-    func onScrollWheel(_ action: @escaping (Double) -> Void) -> some View {
-        overlay(ScrollWheelCatcher(onScroll: action))
-    }
 }

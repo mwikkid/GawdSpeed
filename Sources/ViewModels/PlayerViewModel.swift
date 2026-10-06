@@ -39,7 +39,7 @@ final class PlayerViewModel {
     private(set) var artist: String?
     private(set) var duration: Double = 0
     private(set) var isPlaying = false
-    private(set) var peaks = WaveformPeaks.empty
+    private(set) var pyramid: PeakPyramid?
     private(set) var statusMessage: String?
 
     var allowFaster: Bool = UserDefaults.standard.bool(forKey: "allowFaster") {
@@ -130,6 +130,7 @@ final class PlayerViewModel {
     }
 
     func open(_ url: URL, resumeAt: Double = 0, play resume: Bool = false) {
+        saveSession() // the song we're leaving, while it's still the loaded one
         loadTask?.cancel()
         pause()
         loadState = .loading(url.deletingPathExtension().lastPathComponent)
@@ -140,27 +141,45 @@ final class PlayerViewModel {
                 let audio = try await Task.detached(priority: .userInitiated) {
                     try await AudioLoader.load(url, sampleRate: rate)
                 }.value
-                let peaks = await Task.detached(priority: .userInitiated) {
-                    WaveformAnalyzer.overview(of: audio)
+                let fingerprint = await Task.detached(priority: .userInitiated) { FileFingerprint.of(url) }.value
+                let pyramid = await Task.detached(priority: .userInitiated) { () -> PeakPyramid in
+                    if let fingerprint, let cached = PeakPyramid.cached(
+                        fingerprint: fingerprint, sampleRate: audio.sampleRate, frameCount: audio.frameCount) {
+                        return cached
+                    }
+                    let built = PeakPyramid(channels: audio.channels, frameCount: audio.frameCount)
+                    if let fingerprint { built.store(fingerprint: fingerprint, sampleRate: audio.sampleRate) }
+                    return built
                 }.value
                 guard !Task.isCancelled else { return }
                 try playback.load(audio)
                 title = audio.title
                 artist = audio.artist
                 duration = audio.duration
-                self.peaks = peaks
+                self.pyramid = pyramid
+                self.fingerprint = fingerprint
+                selection = nil
+                loopEnabled = false
+                visibleStart = 0
+                visibleDuration = audio.duration
                 if resumeAt == 0 {
                     semitones = 0 // transpose resets on every new file (spec §5.3)
                     cents = 0
                 }
                 applyAllToEngine()
+                var pickedUp = false
+                if resumeAt == 0, let fingerprint, let session = sessions.load(fingerprint) {
+                    restore(session)
+                    pickedUp = true
+                }
                 if resumeAt > 0 { seek(to: resumeAt) }
                 if resume { play() }
                 loadState = .loaded
                 NSDocumentController.shared.noteNewRecentDocumentURL(url)
+                recentFiles = NSDocumentController.shared.recentDocumentURLs
                 let seconds = Date().timeIntervalSince(started)
                 FileHandle.standardError.write(Data(String(format: "LOAD %@: %.3f s\n", url.lastPathComponent, seconds).utf8))
-                showStatus(String(format: "Opened %@ (%.1f s to load)", audio.title, seconds))
+                showStatus(pickedUp ? "Picked up \(audio.title) where you left off" : "Opened \(audio.title)")
                 startStateTimer()
             } catch is CancellationError {
             } catch let error as LoadError {
@@ -196,7 +215,11 @@ final class PlayerViewModel {
         guard let dsp else { return }
         let playing = gs_engine_is_playing(dsp)
         if playing != isPlaying { isPlaying = playing }
+        if playing, followMode == .page, isFollowing { pageFlipIfNeeded() }
+        pollCount += 1
+        if pollCount % 50 == 0 { saveSession() }
     }
+    @ObservationIgnored private var pollCount = 0
 
     // MARK: Transport
 
@@ -229,10 +252,224 @@ final class PlayerViewModel {
         seek(to: livePosition() + seconds)
     }
 
+    /// Return: the loop's start if there is a selection, else the song's (spec §5.7).
     func backToStart() {
         guard hasFile else { return play() }
-        seek(to: 0)
+        seek(to: selection?.start ?? 0)
     }
+
+    // MARK: Selection and loop (spec §5.6)
+
+    private(set) var selection: Selection?
+    var loopEnabled = false {
+        didSet {
+            syncLoop()
+            if loopEnabled, let selection, !(selection.start...selection.end).contains(livePosition()) {
+                seek(to: selection.start)
+            }
+        }
+    }
+    var snapToZeroCrossing: Bool = UserDefaults.standard.object(forKey: "snapToZeroCrossing") as? Bool ?? true {
+        didSet { UserDefaults.standard.set(snapToZeroCrossing, forKey: "snapToZeroCrossing") }
+    }
+    /// Seconds each loop pass starts before loop-in, 0...2.
+    var prerollSeconds: Double = UserDefaults.standard.double(forKey: "loopPreroll") {
+        didSet {
+            UserDefaults.standard.set(prerollSeconds, forKey: "loopPreroll")
+            syncLoop()
+        }
+    }
+    /// True while a text field is being typed in, so single-key shortcuts
+    /// (Space, I, O, L, arrows...) type instead of firing.
+    var isEditingText = false
+
+    /// Sets the highlighted section. Edges snap to zero crossings unless
+    /// `snap` is false (dragging snaps only when the drag ends).
+    func setSelection(_ newValue: Selection?, snap: Bool = true) {
+        guard var s = newValue?.clamped(to: duration), s.length >= Selection.minimumLength else {
+            selection = nil
+            if loopEnabled { loopEnabled = false } else { syncLoop() }
+            return
+        }
+        if snap, snapToZeroCrossing, let source = playback.source {
+            s = Selection(
+                ZeroCrossing.snap(s.start, channels: source.channels, frameCount: source.frameCount,
+                                  sampleRate: source.sampleRate),
+                ZeroCrossing.snap(s.end, channels: source.channels, frameCount: source.frameCount,
+                                  sampleRate: source.sampleRate))
+        }
+        selection = s
+        syncLoop()
+    }
+
+    func finishSelectionEdit() {
+        setSelection(selection)
+        if let selection { showStatus("Loop set: \(formatTime(selection.start)) – \(formatTime(selection.end))") }
+    }
+
+    func setLoopIn() {
+        guard hasFile else { return play() }
+        let t = livePosition()
+        setSelection(Selection(t, max(selection?.end ?? duration, t + Selection.minimumLength)))
+        if let selection { showStatus("Loop starts at \(formatTime(selection.start))") }
+    }
+
+    func setLoopOut() {
+        guard hasFile else { return play() }
+        let t = livePosition()
+        setSelection(Selection(min(selection?.start ?? 0, t - Selection.minimumLength), t))
+        if let selection { showStatus("Loop ends at \(formatTime(selection.end))") }
+    }
+
+    func toggleLoop() {
+        guard selection != nil else {
+            showStatus("Highlight a section first: drag across the waveform, or press I and O")
+            return
+        }
+        loopEnabled.toggle()
+        showStatus(loopEnabled ? "Loop on" : "Loop off")
+    }
+
+    func clearSelection() {
+        setSelection(nil)
+        showStatus("Selection cleared")
+    }
+
+    private func syncLoop() {
+        guard let dsp, let source = playback.source else { return }
+        let rate = source.sampleRate
+        if let selection {
+            gs_engine_set_loop(dsp, Int64(selection.start * rate), Int64(selection.end * rate), loopEnabled)
+        } else {
+            gs_engine_set_loop(dsp, 0, 0, false)
+        }
+        gs_engine_set_loop_preroll(dsp, Int64(min(max(prerollSeconds, 0), 2) * rate))
+    }
+
+    // MARK: Waveform view (spec §5.5)
+
+    enum FollowMode: String, CaseIterable { case page, smooth }
+
+    /// The part of the song the detail waveform shows, in seconds.
+    var visibleStart: Double = 0
+    var visibleDuration: Double = 1
+    var followMode: FollowMode = FollowMode(rawValue: UserDefaults.standard.string(forKey: "followMode") ?? "") ?? .page {
+        didSet { UserDefaults.standard.set(followMode.rawValue, forKey: "followMode") }
+    }
+    /// Following pauses for a few seconds after the user scrolls by hand.
+    private var manualScrollAt: Date?
+    var isFollowing: Bool { manualScrollAt.map { Date().timeIntervalSince($0) > 4 } ?? true }
+
+    static let minimumVisible = 0.05 // seconds; about 2,400 samples at 48 kHz
+
+    func zoom(by factor: Double, around time: Double) {
+        guard duration > 0 else { return }
+        let newDuration = min(max(visibleDuration / factor, Self.minimumVisible), duration)
+        let anchor = (time - visibleStart) / visibleDuration
+        visibleDuration = newDuration
+        setVisibleStart(time - anchor * newDuration)
+    }
+
+    func zoomIn() { zoom(by: 2, around: livePositionClampedToView()) }
+    func zoomOut() { zoom(by: 0.5, around: livePositionClampedToView()) }
+    func zoomToFit() { visibleDuration = duration; setVisibleStart(0) }
+
+    private func livePositionClampedToView() -> Double {
+        min(max(livePosition(), visibleStart), visibleStart + visibleDuration)
+    }
+
+    /// Scrolls by hand: pauses following for a few seconds.
+    func scrollView(by seconds: Double) {
+        manualScrollAt = Date()
+        setVisibleStart(visibleStart + seconds)
+    }
+
+    func setVisibleStart(_ start: Double) {
+        visibleStart = min(max(start, 0), max(0, duration - visibleDuration))
+    }
+
+    /// Page-flip following: when the playhead leaves the view, turn the page.
+    private func pageFlipIfNeeded() {
+        let p = livePosition()
+        if p < visibleStart || p > visibleStart + visibleDuration * 0.97 {
+            setVisibleStart(p - visibleDuration * 0.03)
+        }
+    }
+
+    /// For smooth following: where the view would start to keep the playhead
+    /// a third of the way in. Read while drawing; changes nothing.
+    func smoothFollowStart(at position: Double) -> Double {
+        min(max(position - visibleDuration / 3, 0), max(0, duration - visibleDuration))
+    }
+
+    var sourceAudio: SourceAudio? { playback.source }
+
+    // MARK: Per-song memory (spec §5.9) and Open Recent
+
+    private let sessions = SessionStore.standard
+    private var fingerprint: String?
+    private(set) var recentFiles: [URL] = NSDocumentController.shared.recentDocumentURLs
+
+    func clearRecentFiles() {
+        NSDocumentController.shared.clearRecentDocuments(nil)
+        recentFiles = []
+    }
+
+    var currentSession: SongSession {
+        SongSession(speed: speed, semitones: semitones, cents: cents, algorithm: algorithm.rawValue,
+                    highpassKnob: highpassKnob, lowpassKnob: lowpassKnob, selection: selection,
+                    loopEnabled: loopEnabled, position: livePosition(),
+                    visibleStart: visibleStart, visibleDuration: visibleDuration)
+    }
+
+    /// Saves the open song's settings. Called when switching songs, every few
+    /// seconds while open (if anything changed), and when the app quits.
+    func saveSession() {
+        guard hasFile, let fingerprint else { return }
+        let session = currentSession
+        guard session != lastSaved else { return }
+        sessions.save(session, for: fingerprint)
+        lastSaved = session
+    }
+    @ObservationIgnored private var lastSaved: SongSession?
+
+    private func restore(_ session: SongSession) {
+        speed = session.speed
+        semitones = session.semitones
+        cents = session.cents
+        algorithm = Algorithm(rawValue: session.algorithm) ?? .b
+        highpassKnob = session.highpassKnob
+        lowpassKnob = session.lowpassKnob
+        visibleDuration = min(max(session.visibleDuration, Self.minimumVisible), duration)
+        setVisibleStart(session.visibleStart)
+        setSelection(session.selection, snap: false)
+        loopEnabled = session.loopEnabled && selection != nil
+        seek(to: session.position)
+        lastSaved = session
+    }
+
+    // MARK: Export (spec §5.8)
+
+    struct ExportRequest: Identifiable {
+        let id = UUID()
+        let selectionOnly: Bool
+    }
+    var exportRequest: ExportRequest?
+
+    func requestExport(selectionOnly: Bool) {
+        guard hasFile else { return play() }
+        exportRequest = ExportRequest(selectionOnly: selectionOnly && selection != nil)
+    }
+
+    /// The current settings as export options (the sheet lets you change them).
+    func exportOptions(selectionOnly: Bool) -> ExportOptions {
+        ExportOptions(range: selectionOnly ? selection.map { $0.start...$0.end } : nil,
+                      speed: speed, transpose: Double(semitones) + cents / 100, algorithm: algorithm.dsp,
+                      applyFilters: true, highpassHz: FilterRange.highpassHz(highpassKnob),
+                      lowpassHz: FilterRange.lowpassHz(lowpassKnob))
+    }
+
+    var sourceURL: URL? { playback.source?.url }
 
     // MARK: Speed and transpose
 

@@ -23,5 +23,7 @@ enum Theme {
     /// Secondary text, about 7:1 on the background (WCAG AA needs 4.5:1).
     static let secondaryText = Color(red: 0.62, green: 0.65, blue: 0.70)
     static let playhead = Color.white
+    /// The highlighted section / loop region.
+    static let selection = Color(red: 0.36, green: 0.72, blue: 0.95)
     static let activeDot = Color(red: 0.98, green: 0.42, blue: 0.33)
 }

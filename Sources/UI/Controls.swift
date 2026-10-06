@@ -28,7 +28,14 @@ struct TransportBar: View {
                 .font(.system(size: 12))
                 .foregroundStyle(Theme.secondaryText)
                 .lineLimit(1)
+                .truncationMode(.tail)
+                .layoutPriority(-1) // the status gives way; the controls never do
                 .animation(.easeInOut(duration: 0.2), value: player.statusMessage)
+
+            Button { player.requestExport(selectionOnly: false) } label: {
+                Label("Export…", systemImage: "square.and.arrow.up").font(.system(size: 12)).fixedSize()
+            }
+            .tip(HelpText.export)
         }
     }
 
@@ -50,9 +57,35 @@ struct TransportBar: View {
                 Text("\(formatTime(player.livePosition()))  /  \(formatTime(player.duration))")
                     .font(.system(size: 15, weight: .medium).monospacedDigit())
                     .foregroundStyle(Theme.primaryText)
+                    .fixedSize()
             }
             .tip(HelpText.time)
             .accessibilityLabel("Position")
+
+            Spacer().frame(width: 6)
+
+            Button { player.toggleLoop() } label: {
+                Label("Loop", systemImage: "repeat")
+                    .font(.system(size: 12, weight: .semibold))
+                    .fixedSize()
+                    .padding(.horizontal, 9)
+                    .frame(height: 26)
+                    .background(Capsule().fill(player.loopEnabled ? Theme.selection.opacity(0.3) : Theme.panel))
+                    .overlay(Capsule().stroke(player.loopEnabled ? Theme.selection : Theme.panelEdge, lineWidth: 1))
+            }
+            .buttonStyle(.plain)
+            .foregroundStyle(player.loopEnabled ? Theme.selection : Theme.primaryText)
+            .tip(HelpText.loop)
+            .accessibilityLabel(player.loopEnabled ? "Loop on" : "Loop off")
+
+            TimeField(label: "In", value: player.selection?.start, player: player) { t in
+                player.setSelection(Selection(t, max(player.selection?.end ?? player.duration, t + Selection.minimumLength)))
+            }
+            .tip(HelpText.loopIn)
+            TimeField(label: "Out", value: player.selection?.end, player: player) { t in
+                player.setSelection(Selection(min(player.selection?.start ?? 0, t - Selection.minimumLength), t))
+            }
+            .tip(HelpText.loopOut)
     }
 
     private func transportButton(_ symbol: String, _ help: String, _ label: String,
@@ -64,6 +97,64 @@ struct TransportBar: View {
         .foregroundStyle(Theme.secondaryText)
         .tip(help)
         .accessibilityLabel(label)
+    }
+}
+
+/// A loop in/out time: shows the time; click to type a new one (spec §5.6).
+struct TimeField: View {
+    let label: String
+    let value: Double?
+    @Bindable var player: PlayerViewModel
+    let commit: (Double) -> Void
+    @State private var editing = false
+    @State private var text = ""
+    @FocusState private var focused: Bool
+
+    var body: some View {
+        HStack(spacing: 4) {
+            Text(label).font(.system(size: 11)).foregroundStyle(Theme.secondaryText)
+            if editing {
+                TextField("0:00.0", text: $text)
+                    .textFieldStyle(.plain)
+                    .font(.system(size: 12).monospacedDigit())
+                    .frame(width: 58)
+                    .focused($focused)
+                    .onSubmit { finish(save: true) }
+                    .onExitCommand { finish(save: false) }
+                    .onChange(of: focused) { _, isFocused in if !isFocused { finish(save: true) } }
+            } else {
+                Button {
+                    text = value.map(formatTime) ?? ""
+                    editing = true
+                    player.isEditingText = true
+                    focused = true
+                } label: {
+                    Text(value.map(formatTime) ?? "–:––.–")
+                        .font(.system(size: 12).monospacedDigit())
+                        .foregroundStyle(value == nil ? Theme.secondaryText : Theme.primaryText)
+                        .frame(width: 58, alignment: .leading)
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .padding(.horizontal, 7)
+        .frame(height: 26)
+        .fixedSize()
+        .background(RoundedRectangle(cornerRadius: 6).fill(Theme.panel))
+        .overlay(RoundedRectangle(cornerRadius: 6).stroke(editing ? Theme.selection : Theme.panelEdge, lineWidth: 1))
+        .accessibilityLabel("Loop \(label == "In" ? "start" : "end")")
+        .accessibilityValue(value.map(formatTime) ?? "not set")
+    }
+
+    private func finish(save: Bool) {
+        guard editing else { return }
+        editing = false
+        player.isEditingText = false
+        if save {
+            if let t = parseTime(text) { commit(t) } else if !text.isEmpty {
+                player.showStatus("Couldn't read \"\(text)\" as a time. Try 0:41.2 or 41.2")
+            }
+        }
     }
 }
 

@@ -20,6 +20,11 @@ enum HelpText {
     static let highpass = "Remove the bass. Drag up to cut more low end. Double-click to reset"
     static let lowpass = "Remove the treble. Drag down to cut more high end. Double-click to reset"
     static let algorithm = "Two different ways of slowing down audio. Try both: one may sound better on this song"
-    static let waveform = "The whole song. Click anywhere to jump there"
+    static let overview = "The whole song. Drag the box to move around, or click to jump the view there"
+    static let detail = "Click to jump there. Drag to highlight a section to loop or export; drag its edges to adjust. Pinch or ⌘-scroll to zoom"
+    static let loop = "Repeat the highlighted section over and over (L)"
+    static let loopIn = "Where the loop starts. Click to type a time, or press I at the playhead"
+    static let loopOut = "Where the loop ends. Click to type a time, or press O at the playhead"
+    static let export = "Save the slowed-down audio as a new file: the whole song or just the highlighted section (⌘E)"
     static let time = "Where you are in the song"
 }

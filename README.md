@@ -3,9 +3,10 @@
 A practice and transcription player for macOS. Load a song, slow it down
 without changing its pitch, loop the hard part, and work it out by ear.
 
-> **Status:** early development. Phase 1 (the core player) works:
-> open a file, slow it down, transpose, filter, and A/B the two algorithms.
-> Loops, export and the zoomable waveform come next.
+> **Status:** early development. Phases 1 and 2 work: open a song, slow it
+> down, transpose, filter, A/B the two algorithms, zoom the waveform, loop a
+> section, and export. Each song remembers its settings. Extra formats (via
+> ffmpeg) and importing from websites come next.
 
 ## Features (planned)
 
