@@ -70,7 +70,9 @@ COMMON_FLAGS=(
 
 for ARCH in arm64 x86_64; do
     A="$WORK/$ARCH"
-    rm -rf "$A" && mkdir -p "$A"
+    # Spotlight can briefly hold files in a fresh build tree; retry the cleanup once.
+    rm -rf "$A" 2>/dev/null || { sleep 2; rm -rf "$A"; }
+    mkdir -p "$A"
     PREFIX="$(pwd)/$A/prefix"
     CFLAGS="-arch $ARCH -mmacosx-version-min=$MACOS_MIN -O2"
     HOST=$([[ $ARCH == arm64 ]] && echo aarch64-apple-darwin || echo x86_64-apple-darwin)

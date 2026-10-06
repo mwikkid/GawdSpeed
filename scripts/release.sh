@@ -4,7 +4,7 @@
 #
 # Builds a release (spec §7.7, §10b): from a tagged, clean commit only, so the
 # tag is the "corresponding source". Produces in dist/:
-#   GawdSpeed-<version>.dmg               the app, LICENSE and notices
+#   GawdSpeed-<version>.dmg               the app, the guide, LICENSE and notices
 #   GawdSpeed-<version>-source.tar.gz     this repo at the tag
 #   ffmpeg-<v>.tar.xz, lame-<v>.tar.gz    the bundled ffmpeg's exact sources
 #   build-ffmpeg.sh                       how they were built
@@ -28,7 +28,8 @@ cd "$(dirname "$0")/.."
 VERSION=${1:?usage: scripts/release.sh <version> [--dry-run | --publish]}
 MODE=${2:-}
 DRY_RUN=$([[ "$MODE" == "--dry-run" ]] && echo "--dry-run" || echo "")
-[[ -f scripts/release.local.env ]] && source scripts/release.local.env
+# UNSIGNED=1 skips the local signing setup (for testing the build alone).
+[[ -z "${UNSIGNED:-}" && -f scripts/release.local.env ]] && source scripts/release.local.env
 TAG="v$VERSION"
 DIST=dist
 APP_NAME=GawdSpeed
@@ -45,12 +46,25 @@ fi
 
 scripts/check-licenses.sh
 
-# 2. Build: bundled ffmpeg, project, universal Release app.
-scripts/build-ffmpeg.sh
-xcodegen generate
-rm -rf build/release "$DIST"
-mkdir -p "$DIST"
-xcodebuild -project GawdSpeed.xcodeproj -scheme GawdSpeed -configuration Release \
+# Check the notarization login before a long build, not after it.
+if [[ -n "${DEVELOPER_ID_APPLICATION:-}" && -n "${NOTARY_PROFILE:-}" ]]; then
+    xcrun notarytool history --keychain-profile "$NOTARY_PROFILE" > /dev/null 2>&1 || {
+        echo "The notarization login '$NOTARY_PROFILE' isn't in the keychain. Recreate it with:" >&2
+        echo "  xcrun notarytool store-credentials $NOTARY_PROFILE --team-id TT4MXN2YL4" >&2
+        echo "(it asks for the Apple ID and an app-specific password from account.apple.com)" >&2
+        exit 1
+    }
+fi
+
+# 2. Build from a clean copy of the commit, never the working folder, so the
+#    app matches its published source exactly (GPL corresponding source).
+SRC=build/release-src
+rm -rf build/release "$SRC" "$DIST"
+mkdir -p "$SRC" "$DIST"
+git archive HEAD | tar -x -C "$SRC"
+mkdir -p "$SRC/build" && [[ -d build/ffmpeg-src ]] && cp -R build/ffmpeg-src "$SRC/build/"   # reuse downloads
+(cd "$SRC" && scripts/build-ffmpeg.sh && xcodegen generate)
+xcodebuild -project "$SRC/GawdSpeed.xcodeproj" -scheme GawdSpeed -configuration Release \
     -destination 'generic/platform=macOS' -derivedDataPath build/release \
     MARKETING_VERSION="$VERSION" build | grep -E "error:|\*\* " || true
 APP="build/release/Build/Products/Release/$APP_NAME.app"
@@ -79,8 +93,8 @@ STAGE=build/release/dmg
 rm -rf "$STAGE" && mkdir -p "$STAGE"
 cp -R "$APP" "$STAGE/"
 ln -s /Applications "$STAGE/Applications"
-cp LICENSE THIRD_PARTY_NOTICES.md "$STAGE/"
-cp -R LICENSES "$STAGE/"
+cp "$SRC/LICENSE" "$SRC/THIRD_PARTY_NOTICES.md" "$SRC/docs/guide/GawdSpeed-Guide.pdf" "$STAGE/"
+cp -R "$SRC/LICENSES" "$STAGE/"
 SUFFIX=$([[ $SIGNED == unsigned ]] && echo "-UNSIGNED" || echo "")
 DMG="$DIST/$APP_NAME-$VERSION$SUFFIX.dmg"
 hdiutil create -volname "$APP_NAME $VERSION" -srcfolder "$STAGE" -ov -format UDZO "$DMG" > /dev/null
@@ -92,8 +106,8 @@ fi
 
 # 5. Corresponding source (GPL): this repo at the tag, and ffmpeg's exact sources.
 git archive --format=tar.gz --prefix="$APP_NAME-$VERSION/" -o "$DIST/$APP_NAME-$VERSION-source.tar.gz" HEAD
-cp build/ffmpeg-src/ffmpeg-*.tar.xz build/ffmpeg-src/lame-*.tar.gz scripts/build-ffmpeg.sh "$DIST/"
-cp build/ffmpeg/BUILDINFO.txt "$DIST/ffmpeg-BUILDINFO.txt"
+cp "$SRC"/build/ffmpeg-src/ffmpeg-*.tar.xz "$SRC"/build/ffmpeg-src/lame-*.tar.gz "$SRC/scripts/build-ffmpeg.sh" "$DIST/"
+cp "$SRC/build/ffmpeg/BUILDINFO.txt" "$DIST/ffmpeg-BUILDINFO.txt"
 
 (cd "$DIST" && shasum -a 256 * > SHA256SUMS)
 echo "Release $VERSION ($SIGNED) in $DIST/:"
