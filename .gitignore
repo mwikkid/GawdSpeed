@@ -1,0 +1,33 @@
+# macOS
+.DS_Store
+.AppleDouble
+._*
+
+# Build output
+build/
+Build/
+cmake-build-*/
+out/
+*.o
+*.a
+*.dylib
+*.so
+
+# Xcode / IDEs
+xcuserdata/
+*.xcuserstate
+DerivedData/
+.vscode/
+.idea/
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Local secrets and scratch (this repo is PUBLIC)
+.env
+.env.*
+*.local
+scratch/
