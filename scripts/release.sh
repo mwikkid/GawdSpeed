@@ -9,20 +9,26 @@
 #   ffmpeg-<v>.tar.xz, lame-<v>.tar.gz    the bundled ffmpeg's exact sources
 #   build-ffmpeg.sh                       how they were built
 #
-# Signing and notarization read credentials from the environment and the
-# keychain only; nothing secret lives in this repo (spec §7.5):
+# Signing happens on this Mac only. The certificate and the notarization
+# login stay in the keychain, and are never uploaded to GitHub (Earl's call,
+# 2026-10-06). Their names come from the environment or from the git-ignored
+# scripts/release.local.env:
 #   DEVELOPER_ID_APPLICATION  e.g. "Developer ID Application: Name (TEAMID)"
 #   NOTARY_PROFILE            a `xcrun notarytool store-credentials` profile name
 # Without them the app is ad-hoc signed and the DMG is marked UNSIGNED.
 #
 # Usage: scripts/release.sh 0.2.0            (HEAD must be tagged v0.2.0)
 #        scripts/release.sh 0.2.0 --dry-run  (any clean HEAD; for testing)
+#        scripts/release.sh 0.2.0 --publish  (tagged; also creates the public
+#                                             GitHub Release. Only when Earl says.)
 
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
-VERSION=${1:?usage: scripts/release.sh <version> [--dry-run]}
-DRY_RUN=${2:-}
+VERSION=${1:?usage: scripts/release.sh <version> [--dry-run | --publish]}
+MODE=${2:-}
+DRY_RUN=$([[ "$MODE" == "--dry-run" ]] && echo "--dry-run" || echo "")
+[[ -f scripts/release.local.env ]] && source scripts/release.local.env
 TAG="v$VERSION"
 DIST=dist
 APP_NAME=GawdSpeed
@@ -92,3 +98,14 @@ cp build/ffmpeg/BUILDINFO.txt "$DIST/ffmpeg-BUILDINFO.txt"
 (cd "$DIST" && shasum -a 256 * > SHA256SUMS)
 echo "Release $VERSION ($SIGNED) in $DIST/:"
 ls -la "$DIST"
+
+# 6. Publish (public!) only when asked, and only a signed build of a tag.
+if [[ "$MODE" == "--publish" ]]; then
+    [[ $SIGNED == notarized ]] || { echo "Not publishing: the build is $SIGNED, not notarized." >&2; exit 1; }
+    git push origin "$TAG"
+    REPO=$(gh repo view --json nameWithOwner --jq .nameWithOwner)
+    gh release create "$TAG" "$DIST"/* --title "GawdSpeed $VERSION" --notes \
+"Built from tag [$TAG](https://github.com/$REPO/tree/$TAG), which is this release's corresponding source.
+
+GawdSpeed is free software under the GNU GPL v3 or later. The DMG includes the license and third-party notices. Also attached: the source at this tag, and the exact FFmpeg and LAME sources plus the script that built the bundled ffmpeg."
+fi

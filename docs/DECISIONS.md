@@ -3,6 +3,19 @@
 Changes to, and settlements of, the spec (`docs/SPEC.md`), newest first. Each entry gives
 the date, who decided, and why.
 
+## 2026-10-06 (Phase 4)
+
+- **Signing stays on Earl's Mac** (Earl: "I'm just making sure we're being secure"). There
+  are no signing secrets on GitHub and no tag-triggered release workflow. `scripts/release.sh`
+  signs with the Developer ID certificate in the keychain ("Earlfriend LLC", shared with
+  Hysterical) and notarizes with the keychain profile `Hysterical`. Their names live in the
+  git-ignored `scripts/release.local.env`. Gatekeeper shows the developer as Earlfriend LLC,
+  while the copyright stays personal.
+- **No public release yet** (Earl): he wants hands-on time first. `--publish` exists but
+  only runs on his word, and only for a notarized build of a tag.
+- **`docs/SPEC.md` stays out of the repo** (Earl). It lives on his Mac only.
+- **Sparkle auto-updates: not added** (optional in the spec).
+
 ## 2026-10-06 (Phase 3)
 
 - **Named regions open as a panel from a "Regions" button**, not a permanent sidebar

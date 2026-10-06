@@ -51,3 +51,6 @@ notarize-credentials*
 
 # Release output (scripts/release.sh)
 dist/
+
+# Local signing names for scripts/release.sh (spec §7.5: nothing signing-related in the repo)
+scripts/release.local.env

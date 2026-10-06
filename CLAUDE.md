@@ -1,8 +1,9 @@
 # GawdSpeed: notes for Claude Code
 
 A macOS practice and transcription player: it slows audio down without
-changing pitch, and adds transpose, loops, filters and export. The full spec is
-`docs/SPEC.md`; read it first. `docs/FINDINGS.md` records measured results
+changing pitch, and adds transpose, loops, filters and export. Earl's full spec
+is `docs/SPEC.md`. It's on his Mac only, deliberately not in the public repo;
+read it first when it's there. `docs/FINDINGS.md` records measured results
 that shaped decisions. Never delete a row there; change its status.
 
 ## This repo
@@ -26,14 +27,15 @@ scripts/check-licenses.sh              # must pass before every commit
 `GawdSpeed.xcodeproj`, `build/`, `dist/` and `TestOutput/` are generated and git-ignored.
 
 ```bash
-scripts/build-ffmpeg.sh               # bundled ffmpeg (about a minute); the app build copies it in
-scripts/release.sh 0.2.0 --dry-run    # a full release build into dist/ without needing a tag
-git tag v0.2.0 && git push origin v0.2.0   # the real release: GitHub Actions builds and publishes it
+scripts/build-ffmpeg.sh                    # bundled ffmpeg (about a minute); the app build copies it in
+scripts/release.sh 0.2.0 --dry-run         # signed + notarized release build into dist/, no tag needed
+git tag v0.2.0 && scripts/release.sh 0.2.0 --publish   # the public release; only when Earl says
 ```
 
-Releases are public, so tag only when Earl says so. Signing needs his Developer ID
-secrets in GitHub (listed at the top of `.github/workflows/release.yml`); without them a
-release is marked UNSIGNED.
+Signing is local only: the Developer ID certificate and the notarytool login live in
+Earl's keychain and are never put on GitHub. `scripts/release.local.env` (git-ignored)
+names them. A codesign that seems stuck is waiting on a keychain dialog; Earl answers
+"Always Allow".
 
 ## Layout and conventions
 
