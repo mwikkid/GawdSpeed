@@ -203,7 +203,10 @@ final class PlayerViewModel {
     func togglePlay() { isPlaying ? pause() : play() }
 
     func play() {
-        guard let dsp, hasFile else { return }
+        guard let dsp, hasFile else {
+            showStatus("Open a song first: drop it on the window, or press ⌘O")
+            return
+        }
         if gs_engine_reached_end(dsp) { gs_engine_seek(dsp, 0) }
         gs_engine_set_playing(dsp, true)
         isPlaying = true
@@ -221,9 +224,15 @@ final class PlayerViewModel {
         gs_engine_seek(dsp, Int64(clamped * source.sampleRate))
     }
 
-    func skip(by seconds: Double) { seek(to: livePosition() + seconds) }
+    func skip(by seconds: Double) {
+        guard hasFile else { return play() } // play() explains how to open a song
+        seek(to: livePosition() + seconds)
+    }
 
-    func backToStart() { seek(to: 0) }
+    func backToStart() {
+        guard hasFile else { return play() }
+        seek(to: 0)
+    }
 
     // MARK: Speed and transpose
 

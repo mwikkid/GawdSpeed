@@ -77,13 +77,12 @@ private struct MainLayout: View {
             VStack(spacing: 10) {
                 TransportBar(player: player)
                     .frame(height: 40)
+                // Live even before a song is open: settings apply when one loads.
                 SpeedControl(player: player)
                     .frame(height: 58)
-                    .disabled(!player.hasFile)
                 Divider().overlay(Theme.panelEdge)
                 SecondaryControls(player: player)
                     .frame(height: 64)
-                    .disabled(!player.hasFile)
             }
             .padding(.horizontal, 18)
             .padding(.top, 8)

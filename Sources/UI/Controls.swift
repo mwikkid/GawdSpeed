@@ -17,8 +17,9 @@ struct TransportBar: View {
 
     var body: some View {
         HStack(spacing: 14) {
+            // Never disabled: a control that looks alive but ignores clicks reads as
+            // a dead app (Earl, 2026-10-06). With no song, play says how to open one.
             HStack(spacing: 14) { transportControls }
-                .disabled(!player.hasFile)
 
             Spacer()
 
