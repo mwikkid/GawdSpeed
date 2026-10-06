@@ -29,8 +29,10 @@ struct Knob: View {
                     .stroke(Theme.secondaryText.opacity(0.25), style: StrokeStyle(lineWidth: 3, lineCap: .round))
                     .rotationEffect(.degrees(135))
                     .padding(4)
+                // The lit arc runs from the "off" position to the knob, so it
+                // shows how much is being cut: empty at off, for either knob.
                 Circle()
-                    .trim(from: 0, to: 0.75 * value)
+                    .trim(from: 0.75 * min(defaultValue, value), to: 0.75 * max(defaultValue, value))
                     .stroke(Theme.secondaryText, style: StrokeStyle(lineWidth: 3, lineCap: .round))
                     .rotationEffect(.degrees(135))
                     .padding(4)
