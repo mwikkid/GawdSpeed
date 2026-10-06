@@ -1,0 +1,9 @@
+upstream: https://github.com/breakfastquay/rubberband
+tag: v4.0.0
+commit: 1d95888bec3ae0a17c0c4af791810d5a63f6bc35
+license: GPL-2.0-or-later
+build: single/RubberBandSingle.cpp (single-file build)
+backends compiled in (verified with clang -H, 2026-10-06):
+  FFT: Apple Accelerate / vDSP (HAVE_VDSP, set by RubberBandSingle.cpp on __APPLE__)
+  resampler: BQResampler (Rubber Band's own, src/common/BQResampler.cpp)
+  no code from src/ext (kissfft, speex, pommier, getopt, float_cast) is compiled

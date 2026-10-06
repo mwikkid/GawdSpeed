@@ -1,0 +1,4 @@
+module GawdDSP {
+    header "GawdDSP.h"
+    export *
+}

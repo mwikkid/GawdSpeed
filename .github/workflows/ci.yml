@@ -1,0 +1,40 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# Copyright (C) 2026 Earl Scioneaux, III
+#
+# Build, test and license check on every push (spec §7.6).
+
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  build-and-test:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: License check
+        run: scripts/check-licenses.sh
+
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      - name: Generate project
+        run: xcodegen generate
+
+      - name: Test (Debug)
+        run: |
+          set -o pipefail
+          xcodebuild -project GawdSpeed.xcodeproj -scheme GawdSpeed \
+            -destination 'platform=macOS' -derivedDataPath build/DerivedData \
+            test | tee build-test.log | grep -E "Test Case|error:|Executed|\*\* "
+
+      - name: Build universal Release (arm64 + x86_64)
+        run: |
+          set -o pipefail
+          xcodebuild -project GawdSpeed.xcodeproj -scheme GawdSpeed \
+            -configuration Release -destination 'generic/platform=macOS' \
+            -derivedDataPath build/DerivedData build | grep -E "error:|\*\* "
+          lipo -info build/DerivedData/Build/Products/Release/GawdSpeed.app/Contents/MacOS/GawdSpeed

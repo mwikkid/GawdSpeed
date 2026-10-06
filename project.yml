@@ -1,0 +1,106 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# Copyright (C) 2026 Earl Scioneaux, III
+#
+# XcodeGen spec. Regenerate the project with `xcodegen generate`;
+# GawdSpeed.xcodeproj is generated and not committed.
+
+name: GawdSpeed
+
+options:
+  bundleIdPrefix: audio.iii
+  deploymentTarget:
+    macOS: "14.0"
+  createIntermediateGroups: true
+  developmentLanguage: en
+
+settings:
+  base:
+    MARKETING_VERSION: "0.1.0"
+    CURRENT_PROJECT_VERSION: "1"
+    SWIFT_VERSION: "5.0"
+    CLANG_CXX_LANGUAGE_STANDARD: c++17
+    CLANG_CXX_LIBRARY: libc++
+    # Never put a ThirdParty/<name>/ folder itself on a search path: its VERSION
+    # file shadows the C++ standard header <version> on a case-insensitive disk.
+    HEADER_SEARCH_PATHS: ["$(SRCROOT)/ThirdParty"]
+    SWIFT_INCLUDE_PATHS: ["$(SRCROOT)/Bridge/include"]
+    CODE_SIGN_IDENTITY: "-"
+    CODE_SIGN_STYLE: Manual
+    DEVELOPMENT_TEAM: ""
+    ENABLE_USER_SCRIPT_SANDBOXING: YES
+  configs:
+    Debug:
+      ONLY_ACTIVE_ARCH: YES
+    Release:
+      ONLY_ACTIVE_ARCH: NO
+      ARCHS: "arm64 x86_64"
+
+targets:
+  # The C/C++ side of the audio engine: both stretchers behind the C API in
+  # Bridge/include. Optimised in every configuration, because the DSP is too
+  # slow to test or play back at -O0.
+  GawdDSP:
+    type: library.static
+    platform: macOS
+    sources:
+      - path: Bridge
+      - path: ThirdParty/rubberband/single/RubberBandSingle.cpp
+        compilerFlags: ["-w"]
+    settings:
+      base:
+        GCC_OPTIMIZATION_LEVEL: "3"
+        GCC_PREPROCESSOR_DEFINITIONS: ["SIGNALSMITH_USE_ACCELERATE=1", "$(inherited)"]
+        GCC_WARN_SHADOW: NO
+        SKIP_INSTALL: YES
+
+  GawdSpeed:
+    type: application
+    platform: macOS
+    sources:
+      - path: Sources
+    dependencies:
+      - target: GawdDSP
+      - sdk: Accelerate.framework
+    settings:
+      base:
+        PRODUCT_NAME: GawdSpeed
+        PRODUCT_BUNDLE_IDENTIFIER: audio.iii.GawdSpeed
+        GENERATE_INFOPLIST_FILE: YES
+        INFOPLIST_KEY_CFBundleDisplayName: GawdSpeed
+        INFOPLIST_KEY_LSApplicationCategoryType: public.app-category.music
+        INFOPLIST_KEY_NSHumanReadableCopyright: "Copyright (C) 2026 Earl Scioneaux, III. Free software under the GNU GPL v3 or later."
+        ENABLE_HARDENED_RUNTIME: YES
+        ENABLE_APP_SANDBOX: NO
+        OTHER_LDFLAGS: ["-lc++"]
+
+  GawdSpeedTests:
+    type: bundle.unit-test
+    platform: macOS
+    sources:
+      - path: Tests
+    dependencies:
+      - target: GawdDSP
+      - sdk: Accelerate.framework
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: audio.iii.GawdSpeedTests
+        GENERATE_INFOPLIST_FILE: YES
+        OTHER_LDFLAGS: ["-lc++"]
+
+schemes:
+  GawdSpeed:
+    build:
+      targets:
+        GawdSpeed: all
+        GawdSpeedTests: [test]
+    run:
+      config: Debug
+    test:
+      config: Debug
+      gatherCoverageData: false
+      targets:
+        - GawdSpeedTests
+      environmentVariables:
+        GAWDSPEED_SOURCE_ROOT: "$(SRCROOT)"
+    archive:
+      config: Release
