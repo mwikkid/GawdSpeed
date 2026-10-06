@@ -103,6 +103,7 @@ targets:
       base:
         PRODUCT_NAME: GawdSpeed
         PRODUCT_BUNDLE_IDENTIFIER: audio.iii.GawdSpeed
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         GENERATE_INFOPLIST_FILE: YES
         INFOPLIST_KEY_CFBundleDisplayName: GawdSpeed
         INFOPLIST_KEY_LSApplicationCategoryType: public.app-category.music
@@ -130,7 +131,8 @@ targets:
       - sdk: Accelerate.framework
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: audio.iii.GawdSpeedTests
+        PRODUCT_BUNDLE_IDENTIFIER: audio.iii.GawdSpeed
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIconTests
         GENERATE_INFOPLIST_FILE: YES
         OTHER_LDFLAGS: ["-lc++"]
 

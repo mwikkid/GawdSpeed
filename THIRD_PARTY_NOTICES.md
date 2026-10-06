@@ -67,6 +67,14 @@ folder there must have an entry here headed `ThirdParty/<name>`.
 
 ---
 
+## GawdSpeed app icon: `Sources/Resources/Assets.xcassets/AppIcon.appiconset`
+
+- **Source:** artwork provided by Earl Scioneaux, III (2026-10-06), cropped to its inner
+  square and fitted to the macOS icon layout.
+- **License:** **not** covered by the GPL. It's the app's identity, so it's treated like
+  the logo below: forks may use the code, but should replace the icon.
+- **Ships in app:** yes
+
 ## iii.audio name and logo: `Sources/Resources/Assets.xcassets/iiiAudioWordmark.imageset`
 
 - **Copyright:** (C) 2026 Earl Scioneaux, III. All rights reserved.
