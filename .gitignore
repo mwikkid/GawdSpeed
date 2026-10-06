@@ -48,3 +48,6 @@ TestAudio/Local/
 *.provisionprofile
 AuthKey_*.p8
 notarize-credentials*
+
+# Release output (scripts/release.sh)
+dist/
