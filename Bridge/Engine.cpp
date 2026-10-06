@@ -107,6 +107,7 @@ struct GSEngine {
     std::atomic<double> lowpassHz{20000.0};
     std::atomic<int64_t> loopStart{0}, loopEnd{0};
     std::atomic<bool> loopEnabled{false};
+    std::atomic<int64_t> loopPreroll{0};
     std::atomic<int64_t> seekTarget{0};
     std::atomic<uint32_t> seekRequests{0};
 
@@ -206,11 +207,27 @@ struct GSEngine {
 
     void render(float *const *output, int count) {
         for (int done = 0; done < count;) {
-            const int n = std::min(maxBlock, count - done);
+            int n = std::min(maxBlock, count - done);
+            // Stop the block exactly where the loop ends, so the wrap lands on
+            // the loop-out frame rather than up to a block late.
+            const int toLoopEnd = framesUntilLoopEnd();
+            if (toLoopEnd > 0) n = std::min(n, toLoopEnd);
             float *out[2] = {output[0] + done, outputChannels > 1 ? output[1] + done : nullptr};
             renderBlock(out, n);
             done += n;
         }
+    }
+
+    /// Output frames until the playing voice reaches the loop's end, or 0 if
+    /// no loop is due (looping off, a crossfade running, or already past it).
+    int framesUntilLoopEnd() const {
+        if (!active || fadingOut || !loopEnabled.load(std::memory_order_relaxed)) return 0;
+        const double end = double(loopEnd.load(std::memory_order_relaxed));
+        const double position = active->position();
+        if (end <= double(loopStart.load(std::memory_order_relaxed)) || position >= end) return 0;
+        const double s = speed.load(std::memory_order_relaxed);
+        const double frames = std::ceil((end - position) / (active->path() == Path::Bypass ? 1.0 : s));
+        return int(std::min(frames, double(maxBlock)));
     }
 
     void renderBlock(float *const *out, int n) {
@@ -237,7 +254,10 @@ struct GSEngine {
             } else if (loopEnabled.load(std::memory_order_relaxed)) {
                 const int64_t ls = loopStart.load(std::memory_order_relaxed);
                 const int64_t le = loopEnd.load(std::memory_order_relaxed);
-                if (le > ls && active->position() >= double(le)) switchTo(active->path(), ls, true);
+                if (le > ls && active->position() >= double(le)) {
+                    const int64_t restart = std::max<int64_t>(0, ls - loopPreroll.load(std::memory_order_relaxed));
+                    switchTo(active->path(), restart, true);
+                }
             }
         }
         active->setParameters(s, t);
@@ -333,6 +353,21 @@ void gs_engine_set_loop(GSEngine *engine, int64_t start, int64_t end, bool enabl
     engine->loopStart.store(start, std::memory_order_relaxed);
     engine->loopEnd.store(end, std::memory_order_relaxed);
     engine->loopEnabled.store(enabled, std::memory_order_relaxed);
+}
+
+void gs_engine_set_loop_preroll(GSEngine *engine, int64_t frames) {
+    engine->loopPreroll.store(std::max<int64_t>(0, frames), std::memory_order_relaxed);
+}
+
+void gs_engine_start_offline(GSEngine *engine, int64_t frame) {
+    engine->seekRequests.fetch_add(1);
+    engine->seeksHandled = engine->seekRequests.load();
+    engine->fadingOut = nullptr;
+    if (!engine->voices.empty()) engine->active = engine->startVoice(engine->desiredPath(), std::max<int64_t>(0, frame));
+    engine->playing.store(true);
+    engine->gain = 1.0f;
+    engine->reachedEnd.store(false);
+    engine->publish();
 }
 
 void gs_engine_seek(GSEngine *engine, int64_t frame) {

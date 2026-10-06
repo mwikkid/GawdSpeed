@@ -13,9 +13,12 @@ final class EngineRig {
     private(set) var output: [[Float]] = [[], []]
     let block: Int
 
-    init(source planar: [[Float]], block: Int = testBlock) {
+    let rate: Double
+
+    init(source planar: [[Float]], block: Int = testBlock, rate: Double = testSampleRate) {
         self.block = block
-        engine = gs_engine_create(testSampleRate, 2, Int32(block))!
+        self.rate = rate
+        engine = gs_engine_create(rate, 2, Int32(block))!
         source = planar.map { samples in
             let buffer = UnsafeMutableBufferPointer<Float>.allocate(capacity: samples.count)
             _ = buffer.initialize(from: samples)
@@ -37,7 +40,7 @@ final class EngineRig {
 
     /// Renders `seconds` more audio, a block at a time.
     func render(seconds: Double) {
-        let total = Int(seconds * testSampleRate)
+        let total = Int((seconds * rate).rounded())
         var left = [Float](repeating: 0, count: block), right = left
         var done = 0
         while done < total {

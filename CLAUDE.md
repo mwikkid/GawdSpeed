@@ -41,6 +41,12 @@ scripts/check-licenses.sh              # must pass before every commit
 - Tests: `Tests/Support` holds the harness and the measuring instruments. An
   instrument is checked against known signals (`InstrumentTests`) before it judges
   anything, and every check has a negative control that proves it can fail.
+- **Never leave a control that looks alive but ignores input.** Earl read the
+  greyed-out-but-normal-looking empty state as "completely dead" (2026-10-06). Keep
+  controls live, and when an action can't happen yet, say why in the status line.
+- Tooltips use `.tip()` (`Sources/UI/Tooltip.swift`), not `.help()`, because
+  `.help()` misplaces its tooltips once the interface is scaled. My synthetic-mouse
+  hover tool doesn't reach the window, so Earl confirms hover behaviour.
 - Known Algorithm A pitch misses are expected failures, and strict (see FINDINGS F1).
   If one starts passing, update the list rather than loosening the test.
 

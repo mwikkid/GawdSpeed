@@ -156,6 +156,16 @@ enum AudioLoader {
                            title: title, artist: artist, url: url)
     }
 
+    /// The file's own sample rate (export defaults to it, spec §5.10).
+    static func nativeSampleRate(of url: URL) async -> Double? {
+        guard let track = try? await AVURLAsset(url: url).loadTracks(withMediaType: .audio).first,
+              let descriptions = try? await track.load(.formatDescriptions),
+              let first = descriptions.first,
+              let basic = CMAudioFormatDescriptionGetStreamBasicDescription(first) else { return nil }
+        let rate = basic.pointee.mSampleRate
+        return rate > 0 ? rate : nil
+    }
+
     private static func channelCount(of track: AVAssetTrack) async -> Int {
         guard let descriptions = try? await track.load(.formatDescriptions),
               let first = descriptions.first,

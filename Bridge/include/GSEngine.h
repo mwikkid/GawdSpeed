@@ -43,7 +43,13 @@ void gs_engine_set_highpass(GSEngine *engine, double hz);
 /// Low-pass cutoff in Hz; 20000 or above means off.
 void gs_engine_set_lowpass(GSEngine *engine, double hz);
 /// Loop between two source frames. Ignored unless enabled and end > start.
+/// The wrap happens on the exact frame where playback reaches `end`.
 void gs_engine_set_loop(GSEngine *engine, int64_t start, int64_t end, bool enabled);
+/// Each loop pass restarts this many source frames before the loop start (0–2 s, spec §5.6).
+void gs_engine_set_loop_preroll(GSEngine *engine, int64_t frames);
+/// Offline rendering (export): jump straight to `frame`, playing at full
+/// volume with no fade-in. Not for live use; call before the first render.
+void gs_engine_start_offline(GSEngine *engine, int64_t frame);
 void gs_engine_seek(GSEngine *engine, int64_t frame);
 
 /// Renders `frames` frames into `output` (one pointer per output channel).
