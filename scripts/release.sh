@@ -131,7 +131,7 @@ tell application "Finder"
         set background picture of opts to file ".background:background.tiff"
         set position of item "$APP_NAME.app" of container window to {170, 140}
         set position of item "Applications" of container window to {470, 140}
-        set position of item "Docs" of container window to {300, 268}
+        set position of item "Docs" of container window to {300, 254}
         close
         open
         update without registering applications
