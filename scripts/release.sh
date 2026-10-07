@@ -107,14 +107,15 @@ ln -s /Applications "$STAGE/Applications"
 cp "$SRC/docs/guide/GawdSpeed-Guide.pdf" "$SRC/LICENSE" "$SRC/THIRD_PARTY_NOTICES.md" "$STAGE/Docs/"
 cp -R "$SRC/LICENSES" "$STAGE/Docs/"
 cp "$SRC/Branding/dmg-background.tiff" "$STAGE/.background/background.tiff"
-cp "$APP/Contents/Resources/AppIcon.icns" "$STAGE/.VolumeIcon.icns"
 SUFFIX=$([[ $SIGNED == unsigned ]] && echo "-UNSIGNED" || echo "")
 DMG="$DIST/$APP_NAME-$VERSION$SUFFIX.dmg"
 VOLUME="$APP_NAME $VERSION"
 RW=build/release/rw.dmg
 hdiutil create -volname "$VOLUME" -srcfolder "$STAGE" -ov -format UDRW -fs HFS+ "$RW" > /dev/null
 MOUNT=$(hdiutil attach -readwrite -noverify -noautoopen "$RW" | awk -F'\t' '/\/Volumes\// {print $NF}')
-SetFile -a C "$MOUNT"   # use .VolumeIcon.icns as the disk icon
+# The disk's icon: hdiutil -srcfolder leaves .VolumeIcon.icns out, so add it here.
+cp "$APP/Contents/Resources/AppIcon.icns" "$MOUNT/.VolumeIcon.icns"
+SetFile -a C "$MOUNT"
 osascript <<APPLESCRIPT
 tell application "Finder"
     tell disk "$VOLUME"
@@ -125,12 +126,12 @@ tell application "Finder"
         set the bounds of container window to {200, 120, 840, 548}
         set opts to the icon view options of container window
         set arrangement of opts to not arranged
-        set icon size of opts to 96
+        set icon size of opts to 80
         set text size of opts to 13
         set background picture of opts to file ".background:background.tiff"
-        set position of item "$APP_NAME.app" of container window to {170, 165}
-        set position of item "Applications" of container window to {470, 165}
-        set position of item "Docs" of container window to {320, 322}
+        set position of item "$APP_NAME.app" of container window to {170, 140}
+        set position of item "Applications" of container window to {470, 140}
+        set position of item "Docs" of container window to {300, 268}
         close
         open
         update without registering applications
