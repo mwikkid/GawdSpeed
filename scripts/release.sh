@@ -113,9 +113,6 @@ VOLUME="$APP_NAME $VERSION"
 RW=build/release/rw.dmg
 hdiutil create -volname "$VOLUME" -srcfolder "$STAGE" -ov -format UDRW -fs HFS+ "$RW" > /dev/null
 MOUNT=$(hdiutil attach -readwrite -noverify -noautoopen "$RW" | awk -F'\t' '/\/Volumes\// {print $NF}')
-# The disk's icon: hdiutil -srcfolder leaves .VolumeIcon.icns out, so add it here.
-cp "$APP/Contents/Resources/AppIcon.icns" "$MOUNT/.VolumeIcon.icns"
-SetFile -a C "$MOUNT"
 osascript <<APPLESCRIPT
 tell application "Finder"
     tell disk "$VOLUME"
@@ -140,6 +137,11 @@ tell application "Finder"
     end tell
 end tell
 APPLESCRIPT
+# The disk's icon, added after Finder has laid out the window: hdiutil
+# -srcfolder leaves .VolumeIcon.icns out, and when copied in before the
+# Finder step it was gone by the time the disk was unmounted.
+cp "$APP/Contents/Resources/AppIcon.icns" "$MOUNT/.VolumeIcon.icns"
+SetFile -a C "$MOUNT"
 sync
 hdiutil detach -quiet "$MOUNT"
 hdiutil convert "$RW" -format UDZO -imagekey zlib-level=9 -ov -o "$DMG" > /dev/null
