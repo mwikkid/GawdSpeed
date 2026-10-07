@@ -4,7 +4,7 @@
 #
 # Builds a release (spec §7.7, §10b): from a tagged, clean commit only, so the
 # tag is the "corresponding source". Produces in dist/:
-#   GawdSpeed-<version>.dmg               the app, the guide, LICENSE and notices
+#   GawdSpeed-<version>.dmg               the app, an Applications link, and Docs/ (guide, licenses)
 #   GawdSpeed-<version>-source.tar.gz     this repo at the tag
 #   ffmpeg-<v>.tar.xz, lame-<v>.tar.gz    the bundled ffmpeg's exact sources
 #   build-ffmpeg.sh                       how they were built
@@ -97,16 +97,52 @@ else
     echo "warning: DEVELOPER_ID_APPLICATION not set; the app is ad-hoc signed and Gatekeeper will warn."
 fi
 
-# 4. DMG: the app, an Applications link, LICENSE and notices.
+# 4. DMG: a styled window with just GawdSpeed, an Applications link and a
+#    Docs folder (guide and licenses), over a background that says what to
+#    do. Icon slots match scripts/make-dmg-background.py.
 STAGE=build/release/dmg
-rm -rf "$STAGE" && mkdir -p "$STAGE"
+rm -rf "$STAGE" && mkdir -p "$STAGE/Docs" "$STAGE/.background"
 cp -R "$APP" "$STAGE/"
 ln -s /Applications "$STAGE/Applications"
-cp "$SRC/LICENSE" "$SRC/THIRD_PARTY_NOTICES.md" "$SRC/docs/guide/GawdSpeed-Guide.pdf" "$STAGE/"
-cp -R "$SRC/LICENSES" "$STAGE/"
+cp "$SRC/docs/guide/GawdSpeed-Guide.pdf" "$SRC/LICENSE" "$SRC/THIRD_PARTY_NOTICES.md" "$STAGE/Docs/"
+cp -R "$SRC/LICENSES" "$STAGE/Docs/"
+cp "$SRC/Branding/dmg-background.tiff" "$STAGE/.background/background.tiff"
+cp "$APP/Contents/Resources/AppIcon.icns" "$STAGE/.VolumeIcon.icns"
 SUFFIX=$([[ $SIGNED == unsigned ]] && echo "-UNSIGNED" || echo "")
 DMG="$DIST/$APP_NAME-$VERSION$SUFFIX.dmg"
-hdiutil create -volname "$APP_NAME $VERSION" -srcfolder "$STAGE" -ov -format UDZO "$DMG" > /dev/null
+VOLUME="$APP_NAME $VERSION"
+RW=build/release/rw.dmg
+hdiutil create -volname "$VOLUME" -srcfolder "$STAGE" -ov -format UDRW -fs HFS+ "$RW" > /dev/null
+MOUNT=$(hdiutil attach -readwrite -noverify -noautoopen "$RW" | awk -F'\t' '/\/Volumes\// {print $NF}')
+SetFile -a C "$MOUNT"   # use .VolumeIcon.icns as the disk icon
+osascript <<APPLESCRIPT
+tell application "Finder"
+    tell disk "$VOLUME"
+        open
+        set current view of container window to icon view
+        set toolbar visible of container window to false
+        set statusbar visible of container window to false
+        set the bounds of container window to {200, 120, 840, 548}
+        set opts to the icon view options of container window
+        set arrangement of opts to not arranged
+        set icon size of opts to 96
+        set text size of opts to 13
+        set background picture of opts to file ".background:background.tiff"
+        set position of item "$APP_NAME.app" of container window to {170, 165}
+        set position of item "Applications" of container window to {470, 165}
+        set position of item "Docs" of container window to {320, 322}
+        close
+        open
+        update without registering applications
+        delay 2
+        close
+    end tell
+end tell
+APPLESCRIPT
+sync
+hdiutil detach -quiet "$MOUNT"
+hdiutil convert "$RW" -format UDZO -imagekey zlib-level=9 -ov -o "$DMG" > /dev/null
+rm -f "$RW"
 [[ $SIGNED != unsigned ]] && codesign --sign "$DEVELOPER_ID_APPLICATION" --timestamp "$DMG"
 if [[ $SIGNED == notarized ]]; then
     xcrun notarytool submit "$DMG" --keychain-profile "$NOTARY_PROFILE" --wait
