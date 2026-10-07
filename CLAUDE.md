@@ -59,6 +59,21 @@ names them. A codesign that seems stuck is waiting on a keychain dialog; Earl an
 - Tooltips use `.tip()` (`Sources/UI/Tooltip.swift`), not `.help()`, because
   `.help()` misplaces its tooltips once the interface is scaled. My synthetic-mouse
   hover tool doesn't reach the window, so Earl confirms hover behaviour.
+- **macOS gotchas this project paid for** (each fixed; keep them fixed):
+  - Single-key menu shortcuts fire while typing in a text field: they're disabled
+    while `player.isEditingText`, and the link field mustn't take the keyboard at launch.
+  - Esc as a menu shortcut never reached the app; it's an `NSEvent` monitor in `ContentView`.
+  - `AVAssetReaderTrackOutput` throws (killing the app) on `AVSampleRateConverterAudioQualityKey`;
+    use `AVSampleRateConverterAlgorithmKey`.
+  - AVFoundation lists FLAC/Ogg tags as `vorb/TITLE`, outside `commonMetadata`.
+  - DMG: `hdiutil -srcfolder` drops `.VolumeIcon.icns`, and the Finder layout step wiped
+    one copied in earlier, so it's added last. Lay the window out to fit Finder's
+    tab and path bars.
+  - The notarytool keychain profile can vanish (twice now); `release.sh` checks it first.
+  - Synthetic mouse events don't reach the app window, so Earl checks hover and drag.
+    Keyboard driving via System Events and `screencapture -l` work.
+- The running list is `docs/TODO.md`, with the HANDOFF block at its head (replaced at
+  every wrap, never appended).
 - Known Algorithm A pitch misses are expected failures, and strict (see FINDINGS F1).
   If one starts passing, update the list rather than loosening the test.
 
