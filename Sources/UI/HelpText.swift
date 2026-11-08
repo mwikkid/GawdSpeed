@@ -11,10 +11,10 @@ enum HelpText {
     static let backToStart = "Jump back to the start of the song (Return)"
     static let rewind = "Skip back 5 seconds (⇧←)"
     static let forward = "Skip ahead 5 seconds (⇧→)"
-    static let speedSlider = "Slow the song down without changing its key. 100% is normal speed (− / =)"
-    static let speed50 = "Jump to half speed"
-    static let speed75 = "Jump to three-quarter speed"
-    static let speed100 = "Jump to normal speed"
+    static let speedSlider = "Speed it up or slow it down without changing the key. 100% is normal speed (− / =)"
+    static func speedPreset(_ percent: Int) -> String {
+        percent == 100 ? "Jump to normal speed" : "Jump to \(percent)% speed"
+    }
     static let transpose = "Change the key in semitones (half steps) without changing the speed. Leave at 0 unless you want to play it in another key ([ / ])"
     static let tune = "Fine-tune in cents (hundredths of a semitone), for recordings that are slightly sharp or flat compared to your instrument (⌥[ / ⌥])"
     static let resetKey = "The key is shifted. Click to go back to the original key (⌘0)"

@@ -179,12 +179,14 @@ struct SpeedControl: View {
                 .foregroundStyle(Theme.accent)
                 .frame(width: 62, alignment: .leading)
 
-            Slider(value: $player.speed, in: PlayerViewModel.minSpeed...player.maxSpeed, step: 0.01) {
+            // Proportional (each doubling of speed is the same distance), so 25–100%
+            // keeps two-thirds of the track and slowing down stays fine-grained.
+            Slider(value: speedPosition, in: 0...1) {
                 Text("Speed")
             } minimumValueLabel: {
                 Text("25%").font(.system(size: 11)).foregroundStyle(Theme.secondaryText)
             } maximumValueLabel: {
-                Text("\(Int(player.maxSpeed * 100))%").font(.system(size: 11)).foregroundStyle(Theme.secondaryText)
+                Text("200%").font(.system(size: 11)).foregroundStyle(Theme.secondaryText)
             }
             .labelsHidden()
             .tint(Theme.accent)
@@ -204,12 +206,19 @@ struct SpeedControl: View {
             .frame(width: 86, alignment: .trailing)
             .accessibilityHidden(true)
 
-            HStack(spacing: 6) {
-                preset(0.5, HelpText.speed50)
-                preset(0.75, HelpText.speed75)
-                preset(1.0, HelpText.speed100)
+            HStack(spacing: 5) {
+                ForEach([0.5, 0.75, 1.0, 1.25, 1.5, 2.0], id: \.self) { value in
+                    preset(value, HelpText.speedPreset(Int(value * 100)))
+                }
             }
         }
+    }
+
+    /// Slider position 0...1 for a speed: log2(speed / 25%) / log2(200% / 25%).
+    private var speedPosition: Binding<Double> {
+        let span = log2(PlayerViewModel.maxSpeed / PlayerViewModel.minSpeed)
+        return Binding(get: { log2(player.speed / PlayerViewModel.minSpeed) / span },
+                       set: { player.speed = PlayerViewModel.minSpeed * pow(2, $0 * span) })
     }
 
     private func preset(_ value: Double, _ help: String) -> some View {
@@ -217,7 +226,7 @@ struct SpeedControl: View {
         return Button { player.setSpeedPreset(value) } label: {
             Text("\(Int(value * 100))")
                 .font(.system(size: 13, weight: .semibold).monospacedDigit())
-                .frame(width: 40, height: 28)
+                .frame(width: 38, height: 28)
                 .background(Capsule().fill(selected ? Theme.accent.opacity(0.25) : Theme.panel))
                 .overlay(Capsule().stroke(selected ? Theme.accent : Theme.panelEdge, lineWidth: 1))
         }

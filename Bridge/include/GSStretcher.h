@@ -38,7 +38,7 @@ GSStretcher *gs_stretcher_create(GSAlgorithm algorithm, double sampleRate, int32
                                  GSSourceRead read, void *context);
 void gs_stretcher_destroy(GSStretcher *stretcher);
 
-/// Playback speed: 1 = normal, 0.5 = half speed. Clamped to 0.25...1.5.
+/// Playback speed: 1 = normal, 0.5 = half speed. Clamped to 0.25...2.
 void gs_stretcher_set_speed(GSStretcher *stretcher, double speed);
 /// Pitch shift in semitones (fractional values are cents). Clamped to -12...12.
 void gs_stretcher_set_transpose(GSStretcher *stretcher, double semitones);

@@ -38,7 +38,7 @@ final class StretcherTests: XCTestCase {
     /// 440 Hz at 25 / 50 / 75 % speed stays at 440 Hz ± 1 cent.
     func testSlowingDownKeepsPitch() {
         for (name, algorithm) in allAlgorithms {
-            for speed in [0.25, 0.5, 0.75] {
+            for speed in [0.25, 0.5, 0.75, 1.5, 2.0] {
                 let frequencies = measuredPitch(algorithm, speed: speed, transpose: 0)
                 checkPitch(algorithm, speed: speed, transpose: 0) {
                     for (channel, frequency) in frequencies.enumerated() {
@@ -84,7 +84,7 @@ final class StretcherTests: XCTestCase {
         let on = 1.0, off = 3.0
         let source = stereo(gatedSine(frequency: 440, seconds: 6, on: on, off: off))
         for (name, algorithm) in allAlgorithms {
-            for speed in [0.25, 0.5, 0.75, 1.0] {
+            for speed in [0.25, 0.5, 0.75, 1.0, 1.5, 2.0] {
                 let frames = Int((off + 0.5) / speed * testSampleRate)
                 let out = renderStretched(algorithm: algorithm, source: source, speed: speed, outputFrames: frames)
                 let span = try XCTUnwrap(toneSpan(out[0]), "Algorithm \(name) at \(speed): no tone found")

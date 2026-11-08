@@ -16,7 +16,7 @@
 namespace gs {
 
 constexpr double kMinSpeed = 0.25;
-constexpr double kMaxSpeed = 1.5;
+constexpr double kMaxSpeed = 2.0;
 constexpr double kMaxTranspose = 12.0;
 
 /// Planar float buffer allocated once, up front.

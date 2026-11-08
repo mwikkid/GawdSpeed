@@ -62,7 +62,6 @@ struct SettingsView: View {
 
     var body: some View {
         Form {
-            Toggle("Allow speeds above 100% (up to 150%)", isOn: $player.allowFaster)
             Toggle("Snap loop points to zero crossings", isOn: $player.snapToZeroCrossing)
                 .help("Moves loop edges up to 5 ms to where the wave crosses zero, which avoids clicks")
             HStack {

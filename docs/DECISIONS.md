@@ -3,6 +3,16 @@
 Changes to, and settlements of, the spec (`docs/SPEC.md`), newest first. Each entry gives
 the date, who decided, and why.
 
+## 2026-11-07 (0.1.1)
+
+- **Speed runs 25%–200%, always** (Marisa, via Earl: "I need gawdspeed to give me the option to
+  increase speed beyond 100%"). The hidden, off-by-default "Allow speeds above 100%" setting
+  (capped at 150%) is gone. The slider is proportional, so 100% sits two-thirds of the way
+  along. Presets are 50 · 75 · 100 · 125 · 150 · 200, and the default is still 100%. Pitch and
+  timing tests now include 150% and 200% for both algorithms. The tooltip stays neutral
+  about why someone speeds up (Earl).
+- **Version 0.1.1 (build 2).**
+
 ## 2026-10-06 (Phase 4)
 
 - **Source for testers is a link, not a bundle** (Earl). Each release build stamps its git

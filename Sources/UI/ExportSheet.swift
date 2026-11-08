@@ -47,7 +47,7 @@ struct ExportSheet: View {
                     }
                 }
                 HStack {
-                    Slider(value: $options.speed, in: 0.25...(player.allowFaster ? 1.5 : 1.0), step: 0.01) {
+                    Slider(value: $options.speed, in: PlayerViewModel.minSpeed...PlayerViewModel.maxSpeed, step: 0.01) {
                         Text("Speed")
                     }
                     Text("\(Int((options.speed * 100).rounded()))%").monospacedDigit().frame(width: 44, alignment: .trailing)

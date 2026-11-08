@@ -42,14 +42,10 @@ final class PlayerViewModel {
     private(set) var pyramid: PeakPyramid?
     private(set) var statusMessage: String?
 
-    var allowFaster: Bool = UserDefaults.standard.bool(forKey: "allowFaster") {
-        didSet {
-            UserDefaults.standard.set(allowFaster, forKey: "allowFaster")
-            if speed > maxSpeed { speed = maxSpeed }
-        }
-    }
-    var maxSpeed: Double { allowFaster ? 1.5 : 1.0 }
+    /// 25% to 200%, either direction without changing the key
+    /// (Marisa asked for faster, 2026-11-07). The default stays 100%.
     static let minSpeed = 0.25
+    static let maxSpeed = 2.0
 
     // Clamped settings. Stored separately and exposed through plain get/set,
     // so a setter never re-assigns its own property.
@@ -57,11 +53,11 @@ final class PlayerViewModel {
     private var semitoneValue = 0
     private var centValue = 0.0
 
-    /// Playback speed, 0.25...1.0 (1.5 with "allow faster"), in 1% steps.
+    /// Playback speed, 0.25...2.0, in 1% steps.
     var speed: Double {
         get { speedValue }
         set {
-            speedValue = min(max((newValue * 100).rounded() / 100, Self.minSpeed), maxSpeed)
+            speedValue = min(max((newValue * 100).rounded() / 100, Self.minSpeed), Self.maxSpeed)
             if let dsp { gs_engine_set_speed(dsp, speedValue) }
         }
     }
