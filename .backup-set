@@ -1,0 +1,6 @@
+# .backup-set -- what Harpo and Google Drive must hold that git does not.
+# One repo-relative path per line. Everything else outside git is rebuilt by
+# a script; see docs/BACKUP.md.
+dist
+docs/SPEC.md
+scripts/release.local.env
