@@ -17,9 +17,9 @@ anything after the commit below is what this block does not know.**
   install), not 0.1.1. yt-dlp 2026.08.19 in `~/Library/Application Support/GawdSpeed/bin`;
   notarytool profile `Hysterical`; signing names in `scripts/release.local.env`.
 - **running in the background:** none.
-- **open questions to Earl:** the proposed measurement-discipline rule (he asked how true
-  it is; answered 2026-11-09). Settled the same day: T1 publish a pre-release after
-  Marisa's run; T9 closed; T6 on hold.
+- **open questions to Earl:** none. Settled 2026-11-09: T1 publish a pre-release after
+  Marisa's run; T9 closed; T6 on hold; the "unmoved reading" rule added to
+  measurement-discipline (claude-kit `8aa6e2a`, committed, not pushed).
 - **awaiting Earl's eyes:** 0.1.1 in Marisa's hands; T3's mouse-only checks.
 - **the thread:** Earl is putting the repo on his résumé. The README was rewritten
   (features, "how it's built", screenshot), and the repo description, homepage
